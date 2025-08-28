@@ -1,0 +1,100 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+import boto3
+import json
+import os
+from datetime import datetime
+
+app = FastAPI(title="AIChat System", version="1.0.0")
+
+# CORS設定
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Bedrock クライアント
+bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-east-1')
+
+# リクエストモデル
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: str = None
+
+# レスポンスモデル
+class ChatResponse(BaseModel):
+    response: str
+    conversation_id: str
+    timestamp: str
+
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    """メインページ"""
+    try:
+        with open("/home/ec2-user/AIChat/web/index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except:
+        return "<h1>AIChat System</h1><p>Loading...</p>"
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_with_ai(request: ChatRequest):
+    """AI チャット API"""
+    try:
+        # Claude 3.5 Sonnet モデル
+        model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+        
+        # リクエストボディ
+        body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 4000,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": request.message
+                }
+            ]
+        }
+        
+        # Bedrock API 呼び出し
+        response = bedrock_runtime.invoke_model(
+            modelId=model_id,
+            body=json.dumps(body)
+        )
+        
+        # レスポンス解析
+        response_body = json.loads(response['body'].read())
+        ai_response = response_body['content'][0]['text']
+        
+        return ChatResponse(
+            response=ai_response,
+            conversation_id=request.conversation_id or "default",
+            timestamp=datetime.now().isoformat()
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI chat error: {str(e)}")
+
+@app.get("/api/health")
+def health_check():
+    """ヘルスチェック"""
+    return {
+        "status": "healthy",
+        "service": "AIChat System",
+        "model": "Claude 3.5 Sonnet",
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/api/version")
+def get_version():
+    """バージョン情報"""
+    return {
+        "version": "1.0.0",
+        "service": "AIChat System",
+        "model": "Claude 3.5 Sonnet",
+        "build_date": datetime.now().isoformat()
+    }
