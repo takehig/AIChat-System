@@ -43,6 +43,7 @@ class ChatResponse(BaseModel):
 class SystemStatus(BaseModel):
     status: str
     mcp_available: bool
+    productmaster_enabled: Optional[bool] = False
     timestamp: str
 
 # 起動時初期化
@@ -91,32 +92,41 @@ async def chat(request: ChatRequest):
 async def get_status():
     global ai_agent
     
+    mcp_available = ai_agent.mcp_available if ai_agent else False
+    
     return SystemStatus(
         status="running",
-        mcp_available=ai_agent.mcp_available if ai_agent else False,
+        mcp_available=mcp_available,
+        productmaster_enabled=mcp_available,  # ProductMaster MCPの状態
         timestamp=datetime.now().isoformat()
     )
 
-@app.post("/api/mcp/toggle")
-async def toggle_mcp():
+@app.post("/api/mcp/productmaster/toggle")
+async def toggle_productmaster_mcp():
     global ai_agent
     
     if not ai_agent:
         raise HTTPException(status_code=503, detail="AI Agent not initialized")
     
     try:
-        # MCP状態を切り替え
+        # ProductMaster MCP状態を切り替え
         new_status = not ai_agent.mcp_available
         ai_agent.mcp_available = new_status
         
         return {
             "status": "success",
             "mcp_enabled": new_status,
-            "message": f"MCP {'有効' if new_status else '無効'}に変更しました"
+            "productmaster_enabled": new_status,
+            "message": f"ProductMaster MCP {'有効' if new_status else '無効'}に変更しました"
         }
     except Exception as e:
-        logger.error(f"MCP toggle error: {e}")
+        logger.error(f"ProductMaster MCP toggle error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mcp/toggle")
+async def toggle_mcp():
+    """Legacy MCP toggle endpoint"""
+    return await toggle_productmaster_mcp()
 
 # 既存のエンドポイント保持（互換性のため）
 @app.post("/chat")

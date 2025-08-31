@@ -1,13 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import boto3
 import json
 import os
+import logging
 from datetime import datetime
+from typing import List, Optional
+from ai_agent import AIAgent
 
-app = FastAPI(title="AIChat System", version="1.0.0")
+# ログ設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="AIChat System with MCP Integration", version="2.1.0")
 
 # CORS設定
 app.add_middleware(
@@ -18,83 +25,204 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Bedrock クライアント
-bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-east-1')
+# グローバル変数
+ai_agent: Optional[AIAgent] = None
 
-# リクエストモデル
+# Pydanticモデル
 class ChatRequest(BaseModel):
     message: str
-    conversation_id: str = None
+    user_id: Optional[str] = "default"
 
-# レスポンスモデル
 class ChatResponse(BaseModel):
-    response: str
-    conversation_id: str
+    message: str
+    timestamp: str
+    tools_used: List[str] = []
+    mcp_enabled: bool = False
+    error: Optional[str] = None
+
+class SystemStatus(BaseModel):
+    status: str
+    mcp_available: bool
     timestamp: str
 
-@app.get("/", response_class=HTMLResponse)
-def read_root():
-    """メインページ"""
+# 起動時初期化
+@app.on_event("startup")
+async def startup_event():
+    global ai_agent
+    logger.info("🚀 Starting AIChat with MCP Integration")
+    
     try:
-        with open("/home/ec2-user/AIChat/web/index.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except:
-        return "<h1>AIChat System</h1><p>Loading...</p>"
+        # AI Agent初期化
+        ai_agent = AIAgent()
+        await ai_agent.initialize()
+        
+        logger.info("✅ AIChat with MCP initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Startup initialization failed: {e}")
+        # MCPが失敗してもサービスは継続
+        ai_agent = AIAgent()
+
+# 静的ファイル配信設定
+app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_with_ai(request: ChatRequest):
-    """AI チャット API"""
-    try:
-        # Claude 3.5 Sonnet モデル
-        model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-        
-        # リクエストボディ
-        body = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 4000,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": request.message
+async def chat(request: ChatRequest):
+            .send-button:hover { background-color: #0056b3; }
+            .loading { color: #6c757d; font-style: italic; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🤖 AIChat with MCP Integration</h1>
+                <p>Claude 3.5 Sonnet + ProductMaster 商品検索</p>
+            </div>
+            <div class="status" id="status">システム初期化中...</div>
+            <div class="chat-container" id="chatContainer">
+                <div class="ai-message">
+                    こんにちは！金融商品に関するご質問をお気軽にどうぞ。<br>
+                    例: 「高利回りの米国債券を教えて」「AAPLの詳細を教えて」
+                </div>
+            </div>
+            <div class="input-container">
+                <input type="text" id="messageInput" class="message-input" placeholder="メッセージを入力してください..." onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()" class="send-button">送信</button>
+            </div>
+        </div>
+
+        <script>
+            let isLoading = false;
+
+            async function checkStatus() {
+                try {
+                    const response = await fetch('/aichat/api/status');
+                    const status = await response.json();
+                    const mcpStatus = status.mcp_available ? '✅ MCP有効' : '⚠️ MCP無効';
+                    document.getElementById('status').innerHTML = 
+                        `✅ システム稼働中 | ${mcpStatus} | Claude 3.5 Sonnet 利用可能`;
+                } catch (error) {
+                    document.getElementById('status').innerHTML = '❌ システムエラー';
                 }
-            ]
-        }
+            }
+
+            async function sendMessage() {
+                if (isLoading) return;
+                
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+                if (!message) return;
+
+                isLoading = true;
+                addMessage(message, 'user');
+                input.value = '';
+                
+                // ローディング表示
+                const loadingDiv = addMessage('処理中...', 'ai', [], true);
+
+                try {
+                    const response = await fetch('/aichat/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: message })
+                    });
+
+                    const result = await response.json();
+                    
+                    // ローディング削除
+                    loadingDiv.remove();
+                    
+                    // AIレスポンス表示
+                    addMessage(result.message, 'ai', result.tools_used, false, result.mcp_enabled);
+
+                } catch (error) {
+                    loadingDiv.remove();
+                    addMessage('エラーが発生しました: ' + error.message, 'ai');
+                } finally {
+                    isLoading = false;
+                }
+            }
+
+            function addMessage(message, type, toolsUsed = [], isLoading = false, mcpEnabled = false) {
+                const container = document.getElementById('chatContainer');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}-message`;
+                
+                if (isLoading) {
+                    messageDiv.className += ' loading';
+                }
+                
+                let toolsInfo = '';
+                if (toolsUsed && toolsUsed.length > 0) {
+                    toolsInfo = `<div class="tools-used">🔧 使用ツール: ${toolsUsed.join(', ')}</div>`;
+                }
+                
+                let mcpInfo = '';
+                if (type === 'ai' && !isLoading) {
+                    mcpInfo = `<div class="mcp-indicator">MCP: ${mcpEnabled ? '有効' : '無効'}</div>`;
+                }
+                
+                messageDiv.innerHTML = `${message}${toolsInfo}${mcpInfo}`;
+                container.appendChild(messageDiv);
+                container.scrollTop = container.scrollHeight;
+                
+                return messageDiv;
+            }
+
+            function handleKeyPress(event) {
+                if (event.key === 'Enter' && !isLoading) {
+                    sendMessage();
+                }
+            }
+
+            // 初期化
+            checkStatus();
+            setInterval(checkStatus, 30000);
+        </script>
+    </body>
+    </html>
+    """
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    global ai_agent
+    
+    if not ai_agent:
+        raise HTTPException(status_code=503, detail="AI Agent not initialized")
+    
+    try:
+        logger.info(f"Processing message: {request.message[:50]}...")
         
-        # Bedrock API 呼び出し
-        response = bedrock_runtime.invoke_model(
-            modelId=model_id,
-            body=json.dumps(body)
-        )
-        
-        # レスポンス解析
-        response_body = json.loads(response['body'].read())
-        ai_response = response_body['content'][0]['text']
+        # AI Agentでメッセージ処理
+        result = await ai_agent.process_message(request.message)
         
         return ChatResponse(
-            response=ai_response,
-            conversation_id=request.conversation_id or "default",
-            timestamp=datetime.now().isoformat()
+            message=result["message"],
+            timestamp=datetime.now().isoformat(),
+            tools_used=result.get("tools_used", []),
+            mcp_enabled=result.get("mcp_enabled", False),
+            error=result.get("error")
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI chat error: {str(e)}")
+        logger.error(f"Chat processing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/health")
-def health_check():
-    """ヘルスチェック"""
-    return {
-        "status": "healthy",
-        "service": "AIChat System",
-        "model": "Claude 3.5 Sonnet",
-        "timestamp": datetime.now().isoformat()
-    }
+@app.get("/api/status", response_model=SystemStatus)
+async def get_status():
+    global ai_agent
+    
+    return SystemStatus(
+        status="running",
+        mcp_available=ai_agent.mcp_available if ai_agent else False,
+        timestamp=datetime.now().isoformat()
+    )
 
-@app.get("/api/version")
-def get_version():
-    """バージョン情報"""
-    return {
-        "version": "1.0.0",
-        "service": "AIChat System",
-        "model": "Claude 3.5 Sonnet",
-        "build_date": datetime.now().isoformat()
-    }
+# 既存のエンドポイント保持（互換性のため）
+@app.post("/chat")
+async def legacy_chat(request: ChatRequest):
+    """Legacy endpoint for backward compatibility"""
+    return await chat(request)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8002)

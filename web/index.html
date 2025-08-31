@@ -99,8 +99,8 @@
                             <i class="fas fa-comment-dots"></i> チャット
                         </h5>
                         <div>
-                            <button id="mcpToggleBtn" class="btn btn-success btn-sm me-2" onclick="toggleMCP()">
-                                MCP: 読み込み中...
+                            <button id="productMasterMcpBtn" class="btn btn-success btn-sm me-2" onclick="toggleProductMasterMCP()">
+                                ProductMaster: 読み込み中...
                             </button>
                             <button class="btn btn-outline-secondary btn-sm" onclick="clearChat()">
                                 <i class="fas fa-trash"></i> クリア
@@ -248,46 +248,46 @@
             document.getElementById('typingIndicator').style.display = 'none';
         }
 
-        // MCP関連関数
-        async function toggleMCP() {
-            console.log('MCP toggle clicked');
+        // ProductMaster MCP関連関数
+        async function toggleProductMasterMCP() {
+            console.log('ProductMaster MCP toggle clicked');
             try {
-                const response = await fetch('/aichat/api/mcp/toggle', {
+                const response = await fetch('/aichat/api/mcp/productmaster/toggle', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const result = await response.json();
-                updateMCPButton(result);
-                alert(result.message || 'MCP状態を変更しました');
+                updateProductMasterMCPButton(result);
+                alert(result.message || 'ProductMaster MCP状態を変更しました');
             } catch (error) {
-                console.error('MCP toggle error:', error);
-                alert('MCP状態の変更に失敗しました');
+                console.error('ProductMaster MCP toggle error:', error);
+                alert('ProductMaster MCP状態の変更に失敗しました');
             }
         }
 
-        function updateMCPButton(status) {
-            const btn = document.getElementById('mcpToggleBtn');
+        function updateProductMasterMCPButton(status) {
+            const btn = document.getElementById('productMasterMcpBtn');
             if (!btn) return;
             
-            if (status.mcp_enabled) {
-                btn.textContent = 'MCP: ON';
+            if (status.mcp_enabled || status.productmaster_enabled) {
+                btn.textContent = 'ProductMaster: ON';
                 btn.className = 'btn btn-success btn-sm me-2';
             } else {
-                btn.textContent = 'MCP: OFF';
+                btn.textContent = 'ProductMaster: OFF';
                 btn.className = 'btn btn-danger btn-sm me-2';
             }
         }
 
-        async function initializeMCP() {
+        async function initializeProductMasterMCP() {
             try {
                 const response = await fetch('/aichat/api/status');
                 const status = await response.json();
-                updateMCPButton(status);
+                updateProductMasterMCPButton(status);
             } catch (error) {
-                console.error('MCP initialization error:', error);
-                const btn = document.getElementById('mcpToggleBtn');
+                console.error('ProductMaster MCP initialization error:', error);
+                const btn = document.getElementById('productMasterMcpBtn');
                 if (btn) {
-                    btn.textContent = 'MCP: エラー';
+                    btn.textContent = 'ProductMaster: エラー';
                     btn.className = 'btn btn-warning btn-sm me-2';
                 }
             }
@@ -307,7 +307,7 @@
         // ページ読み込み時にメッセージ入力欄にフォーカス
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('messageInput').focus();
-            initializeMCP();
+            initializeProductMasterMCP();
         });
     </script>
 </body>
