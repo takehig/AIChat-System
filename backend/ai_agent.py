@@ -17,7 +17,7 @@ class Intent:
 class AIAgent:
     def __init__(self):
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
-        self.model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        self.model_id = "anthropic.claude-3-7-sonnet-20250219-v1:0"
         self.mcp_client = MCPClient()
         self.mcp_available = False
     
