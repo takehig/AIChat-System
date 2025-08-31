@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import boto3
 import json
@@ -14,7 +14,7 @@ from ai_agent import AIAgent
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AIChat System with MCP Integration", version="2.0.0")
+app = FastAPI(title="AIChat System with MCP Integration", version="2.1.0")
 
 # CORS設定
 app.add_middleware(
@@ -62,29 +62,11 @@ async def startup_event():
         # MCPが失敗してもサービスは継続
         ai_agent = AIAgent()
 
-# メインエンドポイント
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>AIChat with MCP Integration</title>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .header { text-align: center; margin-bottom: 20px; }
-            .status { background-color: #e8f5e8; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 0.9em; }
-            .chat-container { border: 1px solid #ddd; height: 400px; overflow-y: auto; padding: 15px; margin: 10px 0; background-color: #fafafa; border-radius: 5px; }
-            .message { margin: 10px 0; padding: 12px; border-radius: 8px; max-width: 80%; }
-            .user-message { background-color: #007bff; color: white; margin-left: auto; text-align: right; }
-            .ai-message { background-color: #f8f9fa; border: 1px solid #dee2e6; }
-            .tools-used { font-size: 0.8em; color: #28a745; margin-top: 8px; font-weight: bold; }
-            .mcp-indicator { font-size: 0.8em; color: #6c757d; margin-top: 5px; }
-            .input-container { display: flex; gap: 10px; margin-top: 20px; }
-            .message-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
-            .send-button { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+# 静的ファイル配信設定
+app.mount("/", StaticFiles(directory="web", html=True), name="static")
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
             .send-button:hover { background-color: #0056b3; }
             .loading { color: #6c757d; font-style: italic; }
         </style>
@@ -234,6 +216,27 @@ async def get_status():
         mcp_available=ai_agent.mcp_available if ai_agent else False,
         timestamp=datetime.now().isoformat()
     )
+
+@app.post("/api/mcp/toggle")
+async def toggle_mcp():
+    global ai_agent
+    
+    if not ai_agent:
+        raise HTTPException(status_code=503, detail="AI Agent not initialized")
+    
+    try:
+        # MCP状態を切り替え
+        new_status = not ai_agent.mcp_available
+        ai_agent.mcp_available = new_status
+        
+        return {
+            "status": "success",
+            "mcp_enabled": new_status,
+            "message": f"MCP {'有効' if new_status else '無効'}に変更しました"
+        }
+    except Exception as e:
+        logger.error(f"MCP toggle error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 既存のエンドポイント保持（互換性のため）
 @app.post("/chat")
