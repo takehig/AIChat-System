@@ -143,7 +143,6 @@ if __name__ == "__main__":
 
 @app.post("/api/mcp/crm/toggle")
 async def toggle_crm_mcp():
-    global ai_agent
     try:
         current_status = getattr(ai_agent, "crm_enabled", False)
         new_status = not current_status
