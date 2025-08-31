@@ -269,7 +269,9 @@
             const btn = document.getElementById('productMasterMcpBtn');
             if (!btn) return;
             
-            if (status.mcp_enabled || status.productmaster_enabled) {
+            const mcpEnabled = status.mcp_enabled || status.productmaster_enabled || false;
+            
+            if (mcpEnabled) {
                 btn.textContent = 'ProductMaster: ON';
                 btn.className = 'btn btn-success btn-sm me-2';
             } else {
@@ -281,6 +283,9 @@
         async function initializeProductMasterMCP() {
             try {
                 const response = await fetch('/aichat/api/status');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 const status = await response.json();
                 updateProductMasterMCPButton(status);
             } catch (error) {
