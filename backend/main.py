@@ -60,9 +60,7 @@ async def startup_event():
         # MCPが失敗してもサービスは継続
         ai_agent = AIAgent()
 
-# 静的ファイル配信設定
-app.mount("/", StaticFiles(directory="../web", html=True), name="static")
-
+# APIエンドポイント（静的ファイル配信より先に定義）
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     global ai_agent
@@ -133,6 +131,9 @@ async def toggle_mcp():
 async def legacy_chat(request: ChatRequest):
     """Legacy endpoint for backward compatibility"""
     return await chat(request)
+
+# 静的ファイル配信設定（最後に配置）
+app.mount("/", StaticFiles(directory="../web", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
