@@ -131,13 +131,6 @@ async def legacy_chat(request: ChatRequest):
     """Legacy endpoint for backward compatibility"""
     return await chat(request)
 
-# 静的ファイル配信設定（最後に配置）
-app.mount("/", StaticFiles(directory="../web", html=True), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002)
-
 @app.post("/api/mcp/crm/toggle")
 async def toggle_crm_mcp():
     global ai_agent
@@ -148,3 +141,11 @@ async def toggle_crm_mcp():
         return {"status": "success", "crm_enabled": new_status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# 静的ファイル配信設定（最後に配置）
+app.mount("/", StaticFiles(directory="../web", html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8002)
+
