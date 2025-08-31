@@ -123,10 +123,7 @@ async def toggle_productmaster_mcp():
         logger.error(f"ProductMaster MCP toggle error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/mcp/toggle")
-async def toggle_mcp():
-    """Legacy MCP toggle endpoint"""
-    return await toggle_productmaster_mcp()
+
 
 # 既存のエンドポイント保持（互換性のため）
 @app.post("/chat")
@@ -143,6 +140,7 @@ if __name__ == "__main__":
 
 @app.post("/api/mcp/crm/toggle")
 async def toggle_crm_mcp():
+    global ai_agent
     try:
         current_status = getattr(ai_agent, "crm_enabled", False)
         new_status = not current_status
