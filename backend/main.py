@@ -61,7 +61,7 @@ async def startup_event():
         ai_agent = AIAgent()
 
 # 静的ファイル配信設定
-app.mount("/", StaticFiles(directory="web", html=True), name="static")
+app.mount("/", StaticFiles(directory="../web", html=True), name="static")
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
