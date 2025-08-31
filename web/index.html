@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIChat System - Claude 3.5 Sonnet</title>
+    <title>AIChat System v2.1.0 - Claude 3.5 Sonnet</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -70,7 +70,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-robot"></i> AIChat System
+                <i class="fas fa-robot"></i> AIChat System v2.1.0
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text text-light">
@@ -98,9 +98,14 @@
                         <h5 class="mb-0">
                             <i class="fas fa-comment-dots"></i> チャット
                         </h5>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="clearChat()">
-                            <i class="fas fa-trash"></i> クリア
-                        </button>
+                        <div>
+                            <button id="mcpToggleBtn" class="btn btn-success btn-sm me-2" onclick="toggleMCP()">
+                                MCP: 読み込み中...
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearChat()">
+                                <i class="fas fa-trash"></i> クリア
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div id="chatContainer" class="chat-container">
@@ -139,7 +144,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
-                    <h6 class="text-muted">AIChat System</h6>
+                    <h6 class="text-muted">AIChat System v2.1.0</h6>
                     <p class="text-muted small mb-0">Claude 3.5 Sonnet による AI チャットシステム</p>
                 </div>
                 <div class="col-md-6 text-md-end">
@@ -154,6 +159,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // AIChat System Version
+        const AICHAT_VERSION = '2.1.0';
+        console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
+        
         let conversationId = 'default';
 
         function handleKeyPress(event) {
@@ -240,6 +249,51 @@
             document.getElementById('typingIndicator').style.display = 'none';
         }
 
+        // MCP関連関数
+        async function toggleMCP() {
+            console.log('MCP toggle clicked');
+            try {
+                const response = await fetch('/aichat/api/mcp/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                updateMCPButton(result);
+                alert(result.message || 'MCP状態を変更しました');
+            } catch (error) {
+                console.error('MCP toggle error:', error);
+                alert('MCP状態の変更に失敗しました');
+            }
+        }
+
+        function updateMCPButton(status) {
+            const btn = document.getElementById('mcpToggleBtn');
+            if (!btn) return;
+            
+            if (status.mcp_enabled) {
+                btn.textContent = 'MCP: ON';
+                btn.className = 'btn btn-success btn-sm me-2';
+            } else {
+                btn.textContent = 'MCP: OFF';
+                btn.className = 'btn btn-danger btn-sm me-2';
+            }
+        }
+
+        async function initializeMCP() {
+            try {
+                const response = await fetch('/aichat/api/status');
+                const status = await response.json();
+                updateMCPButton(status);
+            } catch (error) {
+                console.error('MCP initialization error:', error);
+                const btn = document.getElementById('mcpToggleBtn');
+                if (btn) {
+                    btn.textContent = 'MCP: エラー';
+                    btn.className = 'btn btn-warning btn-sm me-2';
+                }
+            }
+        }
+
         function clearChat() {
             const chatContainer = document.getElementById('chatContainer');
             chatContainer.innerHTML = `
@@ -254,6 +308,7 @@
         // ページ読み込み時にメッセージ入力欄にフォーカス
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('messageInput').focus();
+            initializeMCP();
         });
     </script>
 </body>
