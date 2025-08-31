@@ -44,6 +44,7 @@ class SystemStatus(BaseModel):
     status: str
     mcp_available: bool
     productmaster_enabled: Optional[bool] = False
+    crm_enabled: Optional[bool] = False
     timestamp: str
 
 # 起動時初期化
@@ -95,7 +96,8 @@ async def get_status():
     return SystemStatus(
         status="running",
         mcp_available=mcp_available,
-        productmaster_enabled=mcp_available,  # ProductMaster MCPの状態
+        productmaster_enabled=mcp_available,
+        crm_enabled=False,  # ProductMaster MCPの状態
         timestamp=datetime.now().isoformat()
     )
 
@@ -138,3 +140,13 @@ app.mount("/", StaticFiles(directory="../web", html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8002)
+
+@app.post("/api/mcp/crm/toggle")
+async def toggle_crm_mcp():
+    try:
+        current_status = getattr(ai_agent, "crm_enabled", False)
+        new_status = not current_status
+        ai_agent.crm_enabled = new_status
+        return {"status": "success", "crm_enabled": new_status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

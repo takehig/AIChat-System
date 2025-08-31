@@ -28,10 +28,10 @@ app.add_middleware(
 # グローバル変数
 ai_agent: Optional[AIAgent] = None
 
-# Pydanticモデル
+# データモデル
 class ChatRequest(BaseModel):
     message: str
-    user_id: Optional[str] = "default"
+    conversation_id: Optional[str] = "default"
 
 class ChatResponse(BaseModel):
     message: str
@@ -43,145 +43,24 @@ class ChatResponse(BaseModel):
 class SystemStatus(BaseModel):
     status: str
     mcp_available: bool
+    productmaster_enabled: Optional[bool] = False
     timestamp: str
 
 # 起動時初期化
 @app.on_event("startup")
 async def startup_event():
     global ai_agent
-    logger.info("🚀 Starting AIChat with MCP Integration")
-    
     try:
-        # AI Agent初期化
+        logger.info("🚀 Starting AIChat System...")
         ai_agent = AIAgent()
         await ai_agent.initialize()
-        
-        logger.info("✅ AIChat with MCP initialized successfully")
+        logger.info("✅ AIChat System initialized successfully")
     except Exception as e:
         logger.error(f"❌ Startup initialization failed: {e}")
         # MCPが失敗してもサービスは継続
         ai_agent = AIAgent()
 
-# 静的ファイル配信設定
-app.mount("/", StaticFiles(directory="web", html=True), name="static")
-
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-            .send-button:hover { background-color: #0056b3; }
-            .loading { color: #6c757d; font-style: italic; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🤖 AIChat with MCP Integration</h1>
-                <p>Claude 3.5 Sonnet + ProductMaster 商品検索</p>
-            </div>
-            <div class="status" id="status">システム初期化中...</div>
-            <div class="chat-container" id="chatContainer">
-                <div class="ai-message">
-                    こんにちは！金融商品に関するご質問をお気軽にどうぞ。<br>
-                    例: 「高利回りの米国債券を教えて」「AAPLの詳細を教えて」
-                </div>
-            </div>
-            <div class="input-container">
-                <input type="text" id="messageInput" class="message-input" placeholder="メッセージを入力してください..." onkeypress="handleKeyPress(event)">
-                <button onclick="sendMessage()" class="send-button">送信</button>
-            </div>
-        </div>
-
-        <script>
-            let isLoading = false;
-
-            async function checkStatus() {
-                try {
-                    const response = await fetch('/aichat/api/status');
-                    const status = await response.json();
-                    const mcpStatus = status.mcp_available ? '✅ MCP有効' : '⚠️ MCP無効';
-                    document.getElementById('status').innerHTML = 
-                        `✅ システム稼働中 | ${mcpStatus} | Claude 3.5 Sonnet 利用可能`;
-                } catch (error) {
-                    document.getElementById('status').innerHTML = '❌ システムエラー';
-                }
-            }
-
-            async function sendMessage() {
-                if (isLoading) return;
-                
-                const input = document.getElementById('messageInput');
-                const message = input.value.trim();
-                if (!message) return;
-
-                isLoading = true;
-                addMessage(message, 'user');
-                input.value = '';
-                
-                // ローディング表示
-                const loadingDiv = addMessage('処理中...', 'ai', [], true);
-
-                try {
-                    const response = await fetch('/aichat/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: message })
-                    });
-
-                    const result = await response.json();
-                    
-                    // ローディング削除
-                    loadingDiv.remove();
-                    
-                    // AIレスポンス表示
-                    addMessage(result.message, 'ai', result.tools_used, false, result.mcp_enabled);
-
-                } catch (error) {
-                    loadingDiv.remove();
-                    addMessage('エラーが発生しました: ' + error.message, 'ai');
-                } finally {
-                    isLoading = false;
-                }
-            }
-
-            function addMessage(message, type, toolsUsed = [], isLoading = false, mcpEnabled = false) {
-                const container = document.getElementById('chatContainer');
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${type}-message`;
-                
-                if (isLoading) {
-                    messageDiv.className += ' loading';
-                }
-                
-                let toolsInfo = '';
-                if (toolsUsed && toolsUsed.length > 0) {
-                    toolsInfo = `<div class="tools-used">🔧 使用ツール: ${toolsUsed.join(', ')}</div>`;
-                }
-                
-                let mcpInfo = '';
-                if (type === 'ai' && !isLoading) {
-                    mcpInfo = `<div class="mcp-indicator">MCP: ${mcpEnabled ? '有効' : '無効'}</div>`;
-                }
-                
-                messageDiv.innerHTML = `${message}${toolsInfo}${mcpInfo}`;
-                container.appendChild(messageDiv);
-                container.scrollTop = container.scrollHeight;
-                
-                return messageDiv;
-            }
-
-            function handleKeyPress(event) {
-                if (event.key === 'Enter' && !isLoading) {
-                    sendMessage();
-                }
-            }
-
-            // 初期化
-            checkStatus();
-            setInterval(checkStatus, 30000);
-        </script>
-    </body>
-    </html>
-    """
-
+# APIエンドポイント（静的ファイル配信より先に定義）
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     global ai_agent
@@ -211,17 +90,50 @@ async def chat(request: ChatRequest):
 async def get_status():
     global ai_agent
     
+    mcp_available = ai_agent.mcp_available if ai_agent else False
+    
     return SystemStatus(
         status="running",
-        mcp_available=ai_agent.mcp_available if ai_agent else False,
+        mcp_available=mcp_available,
+        productmaster_enabled=mcp_available,  # ProductMaster MCPの状態
         timestamp=datetime.now().isoformat()
     )
+
+@app.post("/api/mcp/productmaster/toggle")
+async def toggle_productmaster_mcp():
+    global ai_agent
+    
+    if not ai_agent:
+        raise HTTPException(status_code=503, detail="AI Agent not initialized")
+    
+    try:
+        # ProductMaster MCP状態を切り替え
+        new_status = not ai_agent.mcp_available
+        ai_agent.mcp_available = new_status
+        
+        return {
+            "status": "success",
+            "mcp_enabled": new_status,
+            "productmaster_enabled": new_status,
+            "message": f"ProductMaster MCP {'有効' if new_status else '無効'}に変更しました"
+        }
+    except Exception as e:
+        logger.error(f"ProductMaster MCP toggle error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mcp/toggle")
+async def toggle_mcp():
+    """Legacy MCP toggle endpoint"""
+    return await toggle_productmaster_mcp()
 
 # 既存のエンドポイント保持（互換性のため）
 @app.post("/chat")
 async def legacy_chat(request: ChatRequest):
     """Legacy endpoint for backward compatibility"""
     return await chat(request)
+
+# 静的ファイル配信設定（最後に配置）
+app.mount("/", StaticFiles(directory="../web", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
