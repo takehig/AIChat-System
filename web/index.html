@@ -348,6 +348,7 @@
             const loadingDiv = addMessageToChat('ai', 'メッセージを処理中...');
             
             try {
+    console.log("[CRM DEBUG] API呼び出し開始: /api/mcp/crm/toggle");
                 const response = await fetch('/aichat/api/chat', {
                     method: 'POST',
                     headers: {
@@ -364,6 +365,7 @@
                 }
                 
                 const data = await response.json();
+    console.log("[CRM DEBUG] API応答受信:", data);
                 
                 // 送信中表示を削除
                 loadingDiv.remove();
