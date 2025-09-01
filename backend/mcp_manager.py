@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 class MCPManager:
     def __init__(self):
         self.mcp_clients: Dict[str, MCPClient] = {}
-        self.mcp_status: Dict[str, bool] = {}
+        self.mcp_status: Dict[str, bool] = {"productmaster": False, "crm": False}
         self.available_mcps: Dict[str, dict] = {
         'crm': {
             'name': 'CRM',
