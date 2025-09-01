@@ -359,7 +359,7 @@
     <script src="common_functions.js"></script>
     <script>
         // AIChat System Version
-        const AICHAT_VERSION = '2.7.1';
+        const AICHAT_VERSION = '2.7.2';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
         let conversationId = 'default';
@@ -371,12 +371,15 @@
         }
 
         function displayDebugInfo(debugInfo) {
+            console.log("[DEBUG] displayDebugInfo呼び出し:", debugInfo);
             const debugPanel = document.getElementById('debugPanel');
             if (!debugInfo) {
+                console.log("[DEBUG] デバッグ情報なし - デフォルト表示");
                 debugPanel.innerHTML = '<div class="text-muted">デバッグ情報なし</div>';
                 return;
             }
             
+            console.log("[DEBUG] デバッグパネル更新開始");
             const debugHtml = `
                 <div class="mb-3">
                     <strong>ツール:</strong> ${debugInfo.tool_name || 'N/A'}<br>
@@ -398,6 +401,7 @@
                 </div>
             `;
             debugPanel.innerHTML = debugHtml;
+            console.log("[DEBUG] デバッグパネル更新完了");
         }
 
         async function sendMessage() {
@@ -433,10 +437,13 @@
                 const data = await response.json();
     console.log("[CRM DEBUG] API応答受信:", data);
                 
-                // デバッグ情報を表示
+                // デバッグ情報をコンソールに出力
+                console.log("[DEBUG] デバッグ情報チェック:", data.debug_info);
                 if (data.debug_info) {
+                    console.log("[DEBUG] デバッグ情報あり:", JSON.stringify(data.debug_info, null, 2));
                     displayDebugInfo(data.debug_info);
                 } else {
+                    console.log("[DEBUG] デバッグ情報なし");
                     displayDebugInfo(null);
                 }
                 
