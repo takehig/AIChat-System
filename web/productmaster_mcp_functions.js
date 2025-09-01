@@ -40,7 +40,8 @@ function updateProductMasterMCPButton(status) {
 
 async function initializeProductMasterMCP() {
     try {
-        const response = await fetch('/aichat/api/status');
+        console.log("[MCP DEBUG] 初期化: /aichat/api/mcp/productmaster/status");
+        const response = await fetch('/aichat/api/mcp/productmaster/status');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }

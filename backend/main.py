@@ -101,6 +101,17 @@ async def get_status():
         timestamp=datetime.now().isoformat()
     )
 
+@app.get("/api/mcp/productmaster/status")
+async def get_productmaster_status():
+    """ProductMaster MCP専用の状態取得"""
+    global ai_agent
+    productmaster_enabled = ai_agent.mcp_available if ai_agent else False
+    return {
+        "status": "success",
+        "productmaster_enabled": productmaster_enabled,
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.post("/api/mcp/productmaster/toggle")
 async def toggle_productmaster_mcp():
     global ai_agent
