@@ -88,7 +88,7 @@ class AIAgent:
                             "tools_used": [intent.tool_name],
                             "mcp_enabled": True,
                             "mcp_server": mcp_name,
-                            "debug_info": getattr(tool_result, 'debug_info', None)
+                            "debug_info": tool_result.get('debug_info', None)
                         }
                     else:
                         return {
@@ -155,12 +155,15 @@ class AIAgent:
     
     async def format_tool_result(self, user_message: str, tool_name: str, tool_result: Dict[str, Any]) -> str:
         """ツール結果整形"""
+        # tool_resultから実際の結果を取得
+        actual_result = tool_result.get('result', tool_result)
+        
         system_prompt = f"""あなたは親切な金融商品アドバイザーです。
 ユーザーの質問に対して、ツール実行結果を基に自然で分かりやすい回答を作成してください。
 
 ユーザーの質問: {user_message}
 使用したツール: {tool_name}
-ツール実行結果: {json.dumps(tool_result, ensure_ascii=False, indent=2)}
+ツール実行結果: {json.dumps(actual_result, ensure_ascii=False, indent=2)}
 
 回答ガイドライン:
 1. ユーザーの質問に直接答える

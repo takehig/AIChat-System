@@ -80,7 +80,11 @@ class MCPClient:
             result = await self._send_request("tools/call", params)
             
             if "result" in result:
-                return result["result"]
+                # debug_infoも含めて返す
+                response = {"result": result["result"]}
+                if "debug_info" in result:
+                    response["debug_info"] = result["debug_info"]
+                return response
             else:
                 return {"error": "Tool execution failed"}
         except Exception as e:
