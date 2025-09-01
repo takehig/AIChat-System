@@ -96,6 +96,8 @@ class AIAgent:
 - 商品検索・探索 → search_products_flexible
 - 特定商品の詳細 → get_product_details
 - 統計・分析情報 → get_product_statistics
+- 顧客情報検索 → search_customers
+- 顧客保有商品情報 → get_customer_holdings
 - 一般的な質問・挨拶 → ツール不要"""
         
         try:
