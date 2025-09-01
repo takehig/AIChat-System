@@ -185,7 +185,8 @@ async def get_mcp_tools():
             "enabled": getattr(ai_agent, "crm_enabled", False),
             "tools": [
                 {"name": "search_customers", "description": "顧客情報を検索します"},
-                {"name": "get_customer_holdings", "description": "顧客の保有商品情報を取得します"}
+                {"name": "get_customer_holdings", "description": "顧客の保有商品情報を取得します"},
+                {"name": "search_customers_by_bond_maturity", "description": "債券の満期日条件で顧客を検索します"}
             ]
         }
     }
