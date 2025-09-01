@@ -8,6 +8,7 @@ async function toggleCrmMCP() {
             headers: { "Content-Type": "application/json" }
         });
         const result = await response.json();
+        console.log("[CRM DEBUG] API応答受信:", result);
         updateCrmMCPButton(result);
         alert(result.message || "CRM MCP状態を変更しました");
     } catch (error) {
