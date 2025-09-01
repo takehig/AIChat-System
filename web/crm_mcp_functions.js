@@ -48,6 +48,7 @@ async function initializeCrmMCP() {
             throw new Error(`HTTP ${response.status}`);
         }
         const status = await response.json();
+        console.log("[CRM DEBUG] 初期化応答受信:", status);
         updateCrmMCPButton(status);
     } catch (error) {
         console.error("CRM MCP initialization error:", error);
