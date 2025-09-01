@@ -42,8 +42,8 @@ function updateCrmMCPButton(status) {
 
 async function initializeCrmMCP() {
     try {
-        console.log("[CRM DEBUG] 初期化: /aichat/api/status");
-        const response = await fetch("/aichat/api/status");
+        console.log("[CRM DEBUG] 初期化: /aichat/api/mcp/crm/status");
+        const response = await fetch("/aichat/api/mcp/crm/status");
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }

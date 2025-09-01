@@ -131,6 +131,17 @@ async def legacy_chat(request: ChatRequest):
     """Legacy endpoint for backward compatibility"""
     return await chat(request)
 
+@app.get("/api/mcp/crm/status")
+async def get_crm_status():
+    """CRM MCP専用の状態取得"""
+    global ai_agent
+    crm_enabled = getattr(ai_agent, "crm_enabled", False)
+    return {
+        "status": "success",
+        "crm_enabled": crm_enabled,
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.post("/api/mcp/crm/toggle")
 async def toggle_crm_mcp():
     global ai_agent
