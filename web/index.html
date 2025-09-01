@@ -359,7 +359,7 @@
     <script src="common_functions.js"></script>
     <script>
         // AIChat System Version
-        const AICHAT_VERSION = '2.7.2';
+        const AICHAT_VERSION = '2.7.3';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
         let conversationId = 'default';
@@ -418,7 +418,7 @@
             const loadingDiv = addMessageToChat('ai', 'メッセージを処理中...');
             
             try {
-    console.log("[CRM DEBUG] API呼び出し開始: /api/mcp/crm/toggle");
+                console.log("[CHAT DEBUG] API呼び出し開始: /aichat/api/chat");
                 const response = await fetch('/aichat/api/chat', {
                     method: 'POST',
                     headers: {
@@ -435,7 +435,7 @@
                 }
                 
                 const data = await response.json();
-    console.log("[CRM DEBUG] API応答受信:", data);
+                console.log("[CHAT DEBUG] API応答受信:", data);
                 
                 // デバッグ情報をコンソールに出力
                 console.log("[DEBUG] デバッグ情報チェック:", data.debug_info);
