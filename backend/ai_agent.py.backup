@@ -168,16 +168,3 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
         except Exception as e:
             logger.error(f"Claude API error: {e}")
             raise
-# MCP関連メソッド追加
-
-    def get_mcp_status(self):
-        """MCP状態取得"""
-        return {
-            "mcp_enabled": getattr(self, 'mcp_enabled', False),
-            "mcp_available": self.mcp_available
-        }
-
-    def set_mcp_enabled(self, enabled: bool):
-        """MCP有効/無効設定"""
-        self.mcp_enabled = enabled
-        return self.get_mcp_status()

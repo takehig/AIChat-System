@@ -86,6 +86,8 @@ class AIAgent:
 - search_products_flexible: 商品検索・探索
 - get_product_details: 特定商品の詳細
 - get_product_statistics: 統計・分析情報
+- search_customers: 顧客情報検索
+- get_customer_holdings: 顧客保有商品情報
 
 以下のJSON形式で回答してください：
 {"requires_tool": true/false, "tool_name": "ツール名", "arguments": {"パラメータ": "値"}, "confidence": 0.0-1.0}
