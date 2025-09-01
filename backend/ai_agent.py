@@ -18,21 +18,45 @@ class AIAgent:
     def __init__(self):
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
-        self.mcp_client = MCPClient()
+        
+        # 複数MCPクライアント
+        self.mcp_clients = {
+            'productmaster': MCPClient("http://localhost:8003"),
+            'crm': MCPClient("http://localhost:8004")
+        }
         self.mcp_available = False
+        
+        # ツール名とMCPサーバーのマッピング
+        self.tool_routing = {
+            'search_products_flexible': 'productmaster',
+            'get_product_details': 'productmaster', 
+            'get_all_products': 'productmaster',
+            'get_statistics': 'productmaster',
+            'search_customers': 'crm',
+            'get_customer_holdings': 'crm'
+        }
     
     async def initialize(self):
         """AI Agent初期化"""
         try:
-            if await self.mcp_client.health_check():
-                if await self.mcp_client.initialize():
-                    await self.mcp_client.list_tools()
-                    self.mcp_available = True
-                    logger.info("MCP integration enabled")
-                else:
-                    logger.warning("MCP initialization failed")
-            else:
-                logger.warning("MCP server not available")
+            available_count = 0
+            for name, client in self.mcp_clients.items():
+                try:
+                    if await client.health_check():
+                        if await client.initialize():
+                            await client.list_tools()
+                            available_count += 1
+                            logger.info(f"{name} MCP initialized")
+                        else:
+                            logger.warning(f"{name} MCP initialization failed")
+                    else:
+                        logger.warning(f"{name} MCP server not available")
+                except Exception as e:
+                    logger.error(f"{name} MCP initialization error: {e}")
+            
+            self.mcp_available = available_count > 0
+            if self.mcp_available:
+                logger.info(f"MCP integration enabled ({available_count} servers)")
         except Exception as e:
             logger.error(f"AI Agent initialization error: {e}")
     
@@ -44,21 +68,33 @@ class AIAgent:
                 intent = await self.analyze_intent(user_message)
                 
                 if intent.requires_tool and intent.tool_name:
-                    # ツール実行
-                    tool_result = await self.mcp_client.call_tool(
-                        intent.tool_name, intent.arguments or {}
-                    )
-                    
-                    # 結果整形
-                    response = await self.format_tool_result(
-                        user_message, intent.tool_name, tool_result
-                    )
-                    
-                    return {
-                        "message": response,
-                        "tools_used": [intent.tool_name],
-                        "mcp_enabled": True
-                    }
+                    # ツール名から適切なMCPクライアントを選択
+                    mcp_name = self.tool_routing.get(intent.tool_name)
+                    if mcp_name and mcp_name in self.mcp_clients:
+                        client = self.mcp_clients[mcp_name]
+                        # ツール実行
+                        tool_result = await client.call_tool(
+                            intent.tool_name, intent.arguments or {}
+                        )
+                        
+                        # 結果整形
+                        response = await self.format_tool_result(
+                            user_message, intent.tool_name, tool_result
+                        )
+                        
+                        return {
+                            "message": response,
+                            "tools_used": [intent.tool_name],
+                            "mcp_enabled": True,
+                            "mcp_server": mcp_name
+                        }
+                    else:
+                        return {
+                            "message": f"申し訳ございません。ツール '{intent.tool_name}' が見つかりません。",
+                            "tools_used": [],
+                            "mcp_enabled": True,
+                            "error": f"Tool not found: {intent.tool_name}"
+                        }
             
             # 通常のAI応答
             response = await self.generate_ai_response(user_message)
