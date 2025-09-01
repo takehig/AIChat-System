@@ -33,7 +33,8 @@ class AIAgent:
             'get_all_products': 'productmaster',
             'get_statistics': 'productmaster',
             'search_customers': 'crm',
-            'get_customer_holdings': 'crm'
+            'get_customer_holdings': 'crm',
+            'search_customers_by_bond_maturity': 'crm'
         }
     
     async def initialize(self):
@@ -124,6 +125,7 @@ class AIAgent:
 - get_product_statistics: 統計・分析情報
 - search_customers: 顧客情報検索
 - get_customer_holdings: 顧客保有商品情報
+- search_customers_by_bond_maturity: 債券満期日での顧客検索
 
 以下のJSON形式で回答してください：
 {"requires_tool": true/false, "tool_name": "ツール名", "arguments": {"パラメータ": "値"}, "confidence": 0.0-1.0}
@@ -134,6 +136,7 @@ class AIAgent:
 - 統計・分析情報 → get_product_statistics
 - 顧客情報検索 → search_customers
 - 顧客保有商品情報 → get_customer_holdings
+- 満期の近い債券保有者・債券満期日検索 → search_customers_by_bond_maturity
 - 一般的な質問・挨拶 → ツール不要"""
         
         try:
