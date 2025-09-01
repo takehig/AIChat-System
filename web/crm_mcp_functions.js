@@ -9,10 +9,17 @@
                 const result = await response.json();
                 updateCrmMCPButton(result);
                 alert(result.message || "CRM MCP状態を変更しました");
-            } catch (error) {
-                console.error("CRM MCP toggle error:", error);
-                alert("CRM MCP状態の変更に失敗しました");
-            }
+    } catch (error) {
+        console.error("CRM MCP initialization error:", error);
+        const btn = document.getElementById("crmMcpBtn");
+        const statusBadge = document.getElementById("crmStatus");
+        if (btn && statusBadge) {
+            btn.innerHTML = "<i class="fas fa-exclamation-triangle me-1"></i> エラー";
+            btn.className = "btn btn-warning btn-sm w-100";
+            statusBadge.textContent = "エラー";
+            statusBadge.className = "badge bg-warning ms-auto";
+        }
+    }
         }
 
     const statusBadge = document.getElementById('crmStatus');

@@ -10,8 +10,15 @@ async function toggleProductMasterMCP() {
         updateProductMasterMCPButton(result);
         alert(result.message || 'ProductMaster MCP状態を変更しました');
     } catch (error) {
-        console.error('ProductMaster MCP toggle error:', error);
-        alert('ProductMaster MCP状態の変更に失敗しました');
+        console.error("ProductMaster MCP initialization error:", error);
+        const btn = document.getElementById("productMasterMcpBtn");
+        const statusBadge = document.getElementById("productMasterStatus");
+        if (btn && statusBadge) {
+            btn.innerHTML = "<i class="fas fa-exclamation-triangle me-1"></i> エラー";
+            btn.className = "btn btn-warning btn-sm w-100";
+            statusBadge.textContent = "エラー";
+            statusBadge.className = "badge bg-warning ms-auto";
+        }
     }
 }
 
@@ -25,12 +32,16 @@ async function initializeProductMasterMCP() {
         const status = await response.json();
         updateProductMasterMCPButton(status);
     } catch (error) {
-        console.error('ProductMaster MCP initialization error:', error);
-        const btn = document.getElementById('productMasterMcpBtn');
-        if (btn) {
-            btn.textContent = 'ProductMaster: エラー';
-            btn.className = 'btn btn-warning btn-sm me-2';
+        console.error("ProductMaster MCP initialization error:", error);
+        const btn = document.getElementById("productMasterMcpBtn");
+        const statusBadge = document.getElementById("productMasterStatus");
+        if (btn && statusBadge) {
+            btn.innerHTML = "<i class="fas fa-exclamation-triangle me-1"></i> エラー";
+            btn.className = "btn btn-warning btn-sm w-100";
+            statusBadge.textContent = "エラー";
+            statusBadge.className = "badge bg-warning ms-auto";
         }
+    }
     }
 }
 // ProductMaster MCP関連関数更新
