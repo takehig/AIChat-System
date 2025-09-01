@@ -7,6 +7,12 @@ class MCPManager:
         self.mcp_clients: Dict[str, MCPClient] = {}
         self.mcp_status: Dict[str, bool] = {}
         self.available_mcps: Dict[str, dict] = {
+        'crm': {
+            'name': 'CRM',
+            'description': '顧客管理システムとの連携機能',
+            'url': 'http://localhost:8004',
+            'enabled': False
+        },
             'productmaster': {
                 'name': 'ProductMaster',
                 'description': '商品情報検索MCP',
