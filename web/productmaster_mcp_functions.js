@@ -1,6 +1,6 @@
 // ProductMaster MCP関連関数
 async function toggleProductMasterMCP() {
-    console.log('ProductMaster MCP toggle clicked');
+    console.log('[PRODUCTMASTER DEBUG] ボタンクリック: ProductMaster MCP toggle');
     try {
         const response = await fetch('/aichat/api/mcp/productmaster/toggle', {
             method: 'POST',
@@ -40,7 +40,7 @@ function updateProductMasterMCPButton(status) {
 
 async function initializeProductMasterMCP() {
     try {
-        console.log("[MCP DEBUG] 初期化: /aichat/api/mcp/productmaster/status");
+        console.log("[PRODUCTMASTER DEBUG] 初期化: /aichat/api/mcp/productmaster/status");
         const response = await fetch('/aichat/api/mcp/productmaster/status');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
