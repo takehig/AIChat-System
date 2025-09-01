@@ -184,9 +184,8 @@ async def get_mcp_tools():
             "available": False,  # CRM MCPは未実装
             "enabled": getattr(ai_agent, "crm_enabled", False),
             "tools": [
-                {"name": "search_customers", "description": "顧客情報検索・更新"},
-                {"name": "get_transaction_history", "description": "取引履歴・ポートフォリオ"},
-                {"name": "generate_proposal", "description": "個別提案・レポート"}
+                {"name": "search_customers", "description": "顧客情報を検索します"},
+                {"name": "get_customer_holdings", "description": "顧客の保有商品情報を取得します"}
             ]
         }
     }

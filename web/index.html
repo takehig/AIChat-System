@@ -271,9 +271,8 @@
                                             顧客管理システムとの連携
                                         </p>
                                         <ul class="list-unstyled small mb-3 mcp-tools" id="crmTools">
-                                            <li><i class="fas fa-code text-info me-1"></i> <code>search_customers</code> - 顧客情報検索・更新</li>
-                                            <li><i class="fas fa-code text-info me-1"></i> <code>get_transaction_history</code> - 取引履歴・ポートフォリオ</li>
-                                            <li><i class="fas fa-code text-info me-1"></i> <code>generate_proposal</code> - 個別提案・レポート</li>
+                                            <li><i class="fas fa-code text-info me-1"></i> <code>search_customers</code> - 顧客情報を検索します</li>
+                                            <li><i class="fas fa-code text-info me-1"></i> <code>get_customer_holdings</code> - 顧客の保有商品情報を取得します</li>
                                         </ul>
                                         <button id="crmMcpBtn" class="btn btn-outline-primary btn-sm w-100" onclick="toggleCrmMCP()">
                                             <i class="fas fa-toggle-off me-1"></i> 有効化
@@ -342,7 +341,7 @@
     <script src="common_functions.js"></script>
     <script>
         // AIChat System Version
-        const AICHAT_VERSION = '2.5.0';
+        const AICHAT_VERSION = '2.5.1';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
         let conversationId = 'default';
