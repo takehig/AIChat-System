@@ -87,7 +87,8 @@ class AIAgent:
                             "message": response,
                             "tools_used": [intent.tool_name],
                             "mcp_enabled": True,
-                            "mcp_server": mcp_name
+                            "mcp_server": mcp_name,
+                            "debug_info": getattr(tool_result, 'debug_info', None)
                         }
                     else:
                         return {
