@@ -15,35 +15,23 @@
             }
         }
 
-        function updateCrmMCPButton(status) {
-            const btn = document.getElementById("crmMcpBtn");
-            if (!btn) return;
-            
-            const mcpEnabled = status.crm_enabled || false;
-            
-            if (mcpEnabled) {
-                btn.textContent = "CRM: ON";
-                btn.className = "btn btn-success btn-sm me-2";
-            } else {
-                btn.textContent = "CRM: OFF";
-                btn.className = "btn btn-danger btn-sm me-2";
-            }
-        }
-
-        async function initializeCrmMCP() {
-            try {
-                const response = await fetch("/aichat/api/status");
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const status = await response.json();
-                updateCrmMCPButton(status);
-            } catch (error) {
-                console.error("CRM MCP initialization error:", error);
-                const btn = document.getElementById("crmMcpBtn");
-                if (btn) {
-                    btn.textContent = "CRM: エラー";
-                    btn.className = "btn btn-warning btn-sm me-2";
-                }
-            }
-        }
+    const statusBadge = document.getElementById('crmStatus');
+    const card = document.getElementById('crmCard');
+    if (!btn || !statusBadge || !card) return;
+    
+    const mcpEnabled = status.crm_enabled || false;
+    
+    if (mcpEnabled) {
+        btn.innerHTML = '<i class="fas fa-toggle-on me-1"></i> 無効化';
+        btn.className = 'btn btn-info btn-sm w-100';
+        statusBadge.textContent = 'ON';
+        statusBadge.className = 'badge bg-success ms-auto';
+        card.style.borderLeft = '4px solid #0dcaf0';
+    } else {
+        btn.innerHTML = '<i class="fas fa-toggle-off me-1"></i> 有効化';
+        btn.className = 'btn btn-outline-info btn-sm w-100';
+        statusBadge.textContent = 'OFF';
+        statusBadge.className = 'badge bg-secondary ms-auto';
+        card.style.borderLeft = 'none';
+    }
+}

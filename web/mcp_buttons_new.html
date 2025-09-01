@@ -1,0 +1,51 @@
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm mcp-card" id="productMasterCard">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <i class="fas fa-database text-primary me-2 fs-5"></i>
+                                                    <h6 class="card-title mb-0 fw-bold">ProductMaster MCP</h6>
+                                                    <span id="productMasterStatus" class="badge bg-secondary ms-auto">読み込み中...</span>
+                                                </div>
+                                                <p class="card-text small text-muted mb-2">
+                                                    金融商品データベースへのアクセス機能
+                                                </p>
+                                                <ul class="list-unstyled small mb-3">
+                                                    <li><i class="fas fa-check text-success me-1"></i> 商品検索・詳細情報取得</li>
+                                                    <li><i class="fas fa-check text-success me-1"></i> 価格・リスク情報照会</li>
+                                                    <li><i class="fas fa-check text-success me-1"></i> 商品比較・推奨機能</li>
+                                                </ul>
+                                                <button id="productMasterMcpBtn" class="btn btn-outline-primary btn-sm w-100" onclick="toggleProductMasterMCP()">
+                                                    <i class="fas fa-toggle-off me-1"></i> 有効化
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm mcp-card" id="crmCard">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <i class="fas fa-users text-info me-2 fs-5"></i>
+                                                    <h6 class="card-title mb-0 fw-bold">CRM MCP</h6>
+                                                    <span id="crmStatus" class="badge bg-secondary ms-auto">読み込み中...</span>
+                                                </div>
+                                                <p class="card-text small text-muted mb-2">
+                                                    顧客管理システムとの連携機能
+                                                </p>
+                                                <ul class="list-unstyled small mb-3">
+                                                    <li><i class="fas fa-check text-success me-1"></i> 顧客情報検索・更新</li>
+                                                    <li><i class="fas fa-check text-success me-1"></i> 取引履歴・ポートフォリオ</li>
+                                                    <li><i class="fas fa-check text-success me-1"></i> 個別提案・レポート生成</li>
+                                                </ul>
+                                                <button id="crmMcpBtn" class="btn btn-outline-info btn-sm w-100" onclick="toggleCrmMCP()">
+                                                    <i class="fas fa-toggle-off me-1"></i> 有効化
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center mb-3">
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="clearChat()">
+                                        <i class="fas fa-trash me-1"></i> チャット履歴をクリア
+                                    </button>
+                                </div>
