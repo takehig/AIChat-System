@@ -25,10 +25,10 @@ function updateCrmMCPButton(status) {
     
     if (mcpEnabled) {
         btn.innerHTML = '<i class="fas fa-toggle-on me-1"></i> 無効化';
-        btn.className = 'btn btn-info btn-sm w-100';
+        btn.className = 'btn btn-primary btn-sm w-100';
         statusBadge.textContent = 'ON';
         statusBadge.className = 'badge bg-success ms-auto';
-        card.style.borderLeft = '4px solid #0dcaf0';
+        card.style.borderLeft = '4px solid #0d6efd';
     } else {
         btn.innerHTML = '<i class="fas fa-toggle-off me-1"></i> 有効化';
         btn.className = 'btn btn-outline-info btn-sm w-100';
