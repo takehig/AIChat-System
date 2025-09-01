@@ -164,6 +164,39 @@ async def toggle_crm_mcp():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/mcp/tools")
+async def get_mcp_tools():
+    """利用可能なMCPツール一覧取得"""
+    global ai_agent
+    
+    tools_info = {
+        "productmaster": {
+            "available": ai_agent.mcp_available if ai_agent else False,
+            "enabled": ai_agent.mcp_available if ai_agent else False,
+            "tools": [
+                {"name": "search_products_flexible", "description": "柔軟な商品検索"},
+                {"name": "get_product_details", "description": "商品詳細取得"},
+                {"name": "get_all_products", "description": "全商品取得"},
+                {"name": "get_statistics", "description": "統計情報取得"}
+            ]
+        },
+        "crm": {
+            "available": False,  # CRM MCPは未実装
+            "enabled": getattr(ai_agent, "crm_enabled", False),
+            "tools": [
+                {"name": "search_customers", "description": "顧客情報検索・更新"},
+                {"name": "get_transaction_history", "description": "取引履歴・ポートフォリオ"},
+                {"name": "generate_proposal", "description": "個別提案・レポート"}
+            ]
+        }
+    }
+    
+    return {
+        "status": "success",
+        "tools": tools_info,
+        "timestamp": datetime.now().isoformat()
+    }
+
 # 静的ファイル配信設定（最後に配置）
 app.mount("/", StaticFiles(directory="../web", html=True), name="static")
 

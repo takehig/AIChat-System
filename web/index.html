@@ -144,6 +144,24 @@
         
         .mcp-card .badge {
         
+        /* ツール名表示用スタイル */
+        .mcp-tools code {
+            background-color: rgba(0, 123, 255, 0.1);
+            color: #0056b3;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        
+        .mcp-tools .text-primary {
+            color: #0056b3 !important;
+        }
+        
+        .mcp-tools .text-info {
+            color: #17a2b8 !important;
+        }
+        
         /* 2列レイアウト用スタイル */
         .chat-container {
             height: 60vh;
@@ -229,10 +247,11 @@
                                         <p class="card-text small text-muted mb-2">
                                             金融商品データベースへのアクセス
                                         </p>
-                                        <ul class="list-unstyled small mb-3">
-                                            <li><i class="fas fa-check text-success me-1"></i> 商品検索・詳細情報</li>
-                                            <li><i class="fas fa-check text-success me-1"></i> 価格・リスク情報</li>
-                                            <li><i class="fas fa-check text-success me-1"></i> 商品比較・推奨</li>
+                                        <ul class="list-unstyled small mb-3 mcp-tools" id="productMasterTools">
+                                            <li><i class="fas fa-code text-primary me-1"></i> <code>search_products_flexible</code> - 柔軟な商品検索</li>
+                                            <li><i class="fas fa-code text-primary me-1"></i> <code>get_product_details</code> - 商品詳細取得</li>
+                                            <li><i class="fas fa-code text-primary me-1"></i> <code>get_all_products</code> - 全商品取得</li>
+                                            <li><i class="fas fa-code text-primary me-1"></i> <code>get_statistics</code> - 統計情報取得</li>
                                         </ul>
                                         <button id="productMasterMcpBtn" class="btn btn-outline-primary btn-sm w-100" onclick="toggleProductMasterMCP()">
                                             <i class="fas fa-toggle-off me-1"></i> 有効化
@@ -251,10 +270,10 @@
                                         <p class="card-text small text-muted mb-2">
                                             顧客管理システムとの連携
                                         </p>
-                                        <ul class="list-unstyled small mb-3">
-                                            <li><i class="fas fa-check text-success me-1"></i> 顧客情報検索・更新</li>
-                                            <li><i class="fas fa-check text-success me-1"></i> 取引履歴・ポートフォリオ</li>
-                                            <li><i class="fas fa-check text-success me-1"></i> 個別提案・レポート</li>
+                                        <ul class="list-unstyled small mb-3 mcp-tools" id="crmTools">
+                                            <li><i class="fas fa-code text-info me-1"></i> <code>search_customers</code> - 顧客情報検索・更新</li>
+                                            <li><i class="fas fa-code text-info me-1"></i> <code>get_transaction_history</code> - 取引履歴・ポートフォリオ</li>
+                                            <li><i class="fas fa-code text-info me-1"></i> <code>generate_proposal</code> - 個別提案・レポート</li>
                                         </ul>
                                         <button id="crmMcpBtn" class="btn btn-outline-primary btn-sm w-100" onclick="toggleCrmMCP()">
                                             <i class="fas fa-toggle-off me-1"></i> 有効化
@@ -323,7 +342,7 @@
     <script src="common_functions.js"></script>
     <script>
         // AIChat System Version
-        const AICHAT_VERSION = '2.4.2';
+        const AICHAT_VERSION = '2.4.3';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
         let conversationId = 'default';
