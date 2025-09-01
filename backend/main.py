@@ -7,7 +7,7 @@ import json
 import os
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from ai_agent import AIAgent
 
 # ログ設定
@@ -39,6 +39,7 @@ class ChatResponse(BaseModel):
     tools_used: List[str] = []
     mcp_enabled: bool = False
     error: Optional[str] = None
+    debug_info: Optional[Dict[str, Any]] = None
 
 class SystemStatus(BaseModel):
     status: str
@@ -80,7 +81,8 @@ async def chat(request: ChatRequest):
             timestamp=datetime.now().isoformat(),
             tools_used=result.get("tools_used", []),
             mcp_enabled=result.get("mcp_enabled", False),
-            error=result.get("error")
+            error=result.get("error"),
+            debug_info=result.get("debug_info")
         )
         
     except Exception as e:
