@@ -78,6 +78,10 @@ class AIAgent:
                             intent.tool_name, intent.arguments or {}
                         )
                         
+                        # debug_info確認ログ
+                        logger.info(f"[DEBUG] tool_result in ai_agent: {tool_result}")
+                        logger.info(f"[DEBUG] tool_result keys: {list(tool_result.keys()) if isinstance(tool_result, dict) else 'Not dict'}")
+                        
                         # 結果整形
                         response = await self.format_tool_result(
                             user_message, intent.tool_name, tool_result
