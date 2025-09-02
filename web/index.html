@@ -359,7 +359,7 @@
     <script src="common_functions.js"></script>
     <script>
         // AIChat System Version
-        const AICHAT_VERSION = '2.8.0';
+        const AICHAT_VERSION = '2.8.1';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
         let conversationId = 'default';
@@ -500,15 +500,23 @@
         // 統合ツールテスト関数
         async function testAllMcpTools() {
             console.log("[MCP TOOL TEST] 全ツールテスト開始");
+            console.log("[MCP TOOL TEST] CRM状態:", typeof crmEnabled, crmEnabled);
+            console.log("[MCP TOOL TEST] ProductMaster状態:", typeof productMasterEnabled, productMasterEnabled);
             
             // CRMツールテスト
             if (typeof crmEnabled !== 'undefined' && crmEnabled) {
+                console.log("[MCP TOOL TEST] CRMテスト実行");
                 await testCrmTools();
+            } else {
+                console.log("[MCP TOOL TEST] CRMテストスキップ - 無効または未定義");
             }
             
             // ProductMasterツールテスト  
             if (typeof productMasterEnabled !== 'undefined' && productMasterEnabled) {
+                console.log("[MCP TOOL TEST] ProductMasterテスト実行");
                 await testProductMasterTools();
+            } else {
+                console.log("[MCP TOOL TEST] ProductMasterテストスキップ - 無効または未定義");
             }
             
             console.log("[MCP TOOL TEST] 全ツールテスト完了");
