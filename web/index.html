@@ -359,7 +359,7 @@
     <script src="common_functions.js"></script>
     <script>
         // AIChat System Version
-        const AICHAT_VERSION = '2.7.3';
+        const AICHAT_VERSION = '2.8.0';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
         let conversationId = 'default';
@@ -496,6 +496,79 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // 統合ツールテスト関数
+        async function testAllMcpTools() {
+            console.log("[MCP TOOL TEST] 全ツールテスト開始");
+            
+            // CRMツールテスト
+            if (typeof crmEnabled !== 'undefined' && crmEnabled) {
+                await testCrmTools();
+            }
+            
+            // ProductMasterツールテスト  
+            if (typeof productMasterEnabled !== 'undefined' && productMasterEnabled) {
+                await testProductMasterTools();
+            }
+            
+            console.log("[MCP TOOL TEST] 全ツールテスト完了");
+        }
+
+        // CRM専用ツールテスト
+        async function testCrmTools() {
+            const crmTestCases = [
+                { tool: "search_customers_by_bond_maturity", message: "2年以内に満期を迎える債券を持っている顧客をテスト検索" },
+                { tool: "search_customers", message: "顧客検索テスト" },
+                { tool: "get_customer_holdings", message: "顧客保有商品テスト" }
+            ];
+            
+            await executeToolTests("CRM", crmTestCases);
+        }
+
+        // ProductMaster専用ツールテスト
+        async function testProductMasterTools() {
+            const pmTestCases = [
+                { tool: "search_products", message: "債券商品を検索してテスト" },
+                { tool: "get_all_products", message: "全商品取得テスト" }
+            ];
+            
+            await executeToolTests("PRODUCTMASTER", pmTestCases);
+        }
+
+        // 共通テスト実行関数
+        async function executeToolTests(mcpType, testCases) {
+            for (const testCase of testCases) {
+                try {
+                    console.log(`[${mcpType} TOOL TEST] ${testCase.tool} テスト開始`);
+                    
+                    const response = await fetch('/aichat/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: testCase.message })
+                    });
+                    
+                    const result = await response.json();
+                    console.log(`[${mcpType} TOOL TEST] ${testCase.tool} 結果:`, {
+                        success: !result.error,
+                        tools_used: result.tools_used,
+                        mcp_enabled: result.mcp_enabled,
+                        error: result.error,
+                        debug_info: result.debug_info
+                    });
+                    
+                } catch (error) {
+                    console.error(`[${mcpType} TOOL TEST] ${testCase.tool} エラー:`, error);
+                }
+            }
+        }
+
+        // 初期化完了後にツールテスト実行
+        window.addEventListener('load', async function() {
+            // 少し待ってからテスト実行（MCP初期化完了を待つ）
+            setTimeout(async () => {
+                await testAllMcpTools();
+            }, 3000);
+        });
 
         // Enterキーでメッセージ送信
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
