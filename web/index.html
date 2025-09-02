@@ -393,24 +393,27 @@
                 return;
             }
             
+            const request = debugInfo.request || {};
+            const response = debugInfo.response || {};
+            
             const debugHtml = `
                 <div class="mb-3">
-                    <strong>ツール:</strong> ${debugInfo.tool_name || 'N/A'}<br>
-                    <strong>実行時間:</strong> ${debugInfo.execution_time_ms || 'N/A'}ms<br>
-                    <strong>結果件数:</strong> ${debugInfo.rows_found || 0}件<br>
-                    <strong>実行時刻:</strong> ${debugInfo.timestamp ? new Date(debugInfo.timestamp).toLocaleTimeString() : 'N/A'}
+                    <h6 class="fw-bold text-primary">リクエスト情報</h6>
+                    <strong>ツール:</strong> ${request.tool_name || 'N/A'}<br>
+                    <strong>引数:</strong>
+                    <pre class="bg-light p-2 small">${JSON.stringify(request.arguments || {}, null, 2)}</pre>
+                    <strong>サーバー:</strong> ${request.server_url || 'N/A'}<br>
+                    <strong>送信時刻:</strong> ${request.timestamp || 'N/A'}
                 </div>
                 <div class="mb-3">
-                    <strong>入力パラメータ:</strong>
-                    <pre class="bg-light p-2 small">${JSON.stringify(debugInfo.input_params || {}, null, 2)}</pre>
-                </div>
-                <div class="mb-3">
+                    <h6 class="fw-bold text-success">レスポンス情報</h6>
+                    <strong>処理時間:</strong> ${response.processing_time_ms || 'N/A'}ms<br>
+                    <strong>ステータス:</strong> ${response.status || 'N/A'}<br>
+                    <strong>結果件数:</strong> ${response.rows_found || 0}件<br>
                     <strong>実行クエリ:</strong>
-                    <pre class="bg-light p-2 small" style="white-space: pre-wrap;">${debugInfo.executed_query || 'N/A'}</pre>
-                </div>
-                <div class="mb-3">
+                    <pre class="bg-light p-2 small" style="white-space: pre-wrap;">${response.executed_query || 'N/A'}</pre>
                     <strong>クエリパラメータ:</strong>
-                    <pre class="bg-light p-2 small">${JSON.stringify(debugInfo.query_params || [], null, 2)}</pre>
+                    <pre class="bg-light p-2 small">${JSON.stringify(response.query_params || [], null, 2)}</pre>
                 </div>
             `;
             debugPanel.innerHTML = debugHtml;
@@ -448,31 +451,16 @@
                 
                 const data = await response.json();
                 
-                // デバッグ情報を先に分離して出力
+                // API応答をコンソールに出力（debug_info統合済み）
+                console.log("[CHAT DEBUG] API応答受信:", data);
+                
+                // デバッグ情報を画面に表示
                 if (data.debug_info) {
-                    if (data.debug_info.mcp_request_info) {
-                        console.log("[DEBUG] MCP Request:", {
-                            tool: data.debug_info.tool_name,
-                            arguments_sent: data.debug_info.arguments_sent,
-                            server: data.debug_info.server_url,
-                            processing_time_ms: data.debug_info.processing_time_ms
-                        });
-                    } else {
-                        console.log("[DEBUG] MCP Response:", {
-                            input_params: data.debug_info.input_params,
-                            executed_query: data.debug_info.executed_query,
-                            query_params: data.debug_info.query_params,
-                            rows_found: data.debug_info.rows_found,
-                            execution_time_ms: data.debug_info.execution_time_ms
-                        });
-                    }
                     displayDebugInfo(data.debug_info);
                 } else {
                     console.log("[DEBUG] No debug info available");
                     displayDebugInfo(null);
                 }
-                
-                console.log("[CHAT DEBUG] API応答受信:", data);
                 
                 // 送信中表示を削除
                 loadingDiv.remove();

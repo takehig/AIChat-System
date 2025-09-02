@@ -88,15 +88,19 @@ class MCPClient:
             logger.info(f"[DEBUG] MCP server response: {result}")
             
             if "result" in result:
-                # debug_infoを生成（リクエスト情報）
+                # debug_infoを統合形式で生成
                 debug_info = {
-                    "mcp_request_info": "This is AIChat->MCP request information",
-                    "tool_name": tool_name,
-                    "arguments_sent": arguments,
-                    "server_url": self.server_url,
-                    "processing_time_ms": processing_time,
-                    "request_id": result.get("id"),
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                    "request": {
+                        "tool_name": tool_name,
+                        "arguments": arguments,
+                        "server_url": self.server_url,
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                    },
+                    "response": {
+                        "processing_time_ms": processing_time,
+                        "request_id": result.get("id"),
+                        "status": "success"
+                    }
                 }
                 
                 logger.info(f"[DEBUG] Generated debug_info: {debug_info}")
@@ -111,12 +115,17 @@ class MCPClient:
                 return {
                     "error": "Tool execution failed",
                     "debug_info": {
-                        "mcp_request_info": "This is AIChat->MCP request information (ERROR)",
-                        "tool_name": tool_name,
-                        "arguments_sent": arguments,
-                        "server_url": self.server_url,
-                        "processing_time_ms": processing_time,
-                        "error": "No result in response"
+                        "request": {
+                            "tool_name": tool_name,
+                            "arguments": arguments,
+                            "server_url": self.server_url,
+                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                        },
+                        "response": {
+                            "processing_time_ms": processing_time,
+                            "status": "error",
+                            "error": "No result in response"
+                        }
                     }
                 }
         except Exception as e:
@@ -125,12 +134,17 @@ class MCPClient:
             return {
                 "error": str(e),
                 "debug_info": {
-                    "mcp_request_info": "This is AIChat->MCP request information (EXCEPTION)",
-                    "tool_name": tool_name,
-                    "arguments_sent": arguments,
-                    "server_url": self.server_url,
-                    "processing_time_ms": processing_time,
-                    "error_type": type(e).__name__,
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                    "request": {
+                        "tool_name": tool_name,
+                        "arguments": arguments,
+                        "server_url": self.server_url,
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                    },
+                    "response": {
+                        "processing_time_ms": processing_time,
+                        "status": "exception",
+                        "error_type": type(e).__name__,
+                        "error_message": str(e)
+                    }
                 }
             }
