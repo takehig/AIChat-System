@@ -281,6 +281,8 @@
                                     </div>
                                 </div>
                                 
+                                <!-- 全ツールテストボタン -->\n                                <div class=\"card border-0 shadow-sm mb-3\" style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\">\n                                    <div class=\"card-body p-3 text-white\">\n                                        <div class=\"d-flex align-items-center mb-2\">\n                                            <i class=\"fas fa-flask me-2 fs-5\"></i>\n                                            <h6 class=\"card-title mb-0 fw-bold\">ツールテスト</h6>\n                                        </div>\n                                        <p class=\"card-text small mb-2 opacity-75\">\n                                            全MCPツールの動作確認\n                                        </p>\n                                        <button id=\"testAllToolsBtn\" class=\"btn btn-light btn-sm w-100\" onclick=\"testAllMcpTools()\">\n                                            <i class=\"fas fa-play me-1\"></i> 全ツールテスト実行\n                                        </button>\n                                    </div>\n                                </div>
+                                
                                 <!-- Clear Button -->
                                 <div class="text-center">
                                     <button class="btn btn-outline-secondary btn-sm" onclick="clearChat()">
@@ -559,14 +561,6 @@
                 }
             }
         }
-
-        // 初期化完了後にツールテスト実行
-        window.addEventListener('load', async function() {
-            // 少し待ってからテスト実行（MCP初期化完了を待つ）
-            setTimeout(async () => {
-                await testAllMcpTools();
-            }, 3000);
-        });
 
         // Enterキーでメッセージ送信
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
