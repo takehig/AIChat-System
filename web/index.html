@@ -387,15 +387,12 @@
         }
 
         function displayDebugInfo(debugInfo) {
-            console.log("[DEBUG] displayDebugInfo呼び出し:", debugInfo);
             const debugPanel = document.getElementById('debugPanel');
             if (!debugInfo) {
-                console.log("[DEBUG] デバッグ情報なし - デフォルト表示");
                 debugPanel.innerHTML = '<div class="text-muted">デバッグ情報なし</div>';
                 return;
             }
             
-            console.log("[DEBUG] デバッグパネル更新開始");
             const debugHtml = `
                 <div class="mb-3">
                     <strong>ツール:</strong> ${debugInfo.tool_name || 'N/A'}<br>
@@ -417,7 +414,6 @@
                 </div>
             `;
             debugPanel.innerHTML = debugHtml;
-            console.log("[DEBUG] デバッグパネル更新完了");
         }
 
         async function sendMessage() {
@@ -453,13 +449,27 @@
                 const data = await response.json();
                 console.log("[CHAT DEBUG] API応答受信:", data);
                 
-                // デバッグ情報をコンソールに出力
-                console.log("[DEBUG] デバッグ情報チェック:", data.debug_info);
+                // デバッグ情報を分離して出力
                 if (data.debug_info) {
-                    console.log("[DEBUG] デバッグ情報あり:", JSON.stringify(data.debug_info, null, 2));
+                    if (data.debug_info.mcp_request_info) {
+                        console.log("[DEBUG] MCP Request:", {
+                            tool: data.debug_info.tool_name,
+                            arguments_sent: data.debug_info.arguments_sent,
+                            server: data.debug_info.server_url,
+                            processing_time_ms: data.debug_info.processing_time_ms
+                        });
+                    } else {
+                        console.log("[DEBUG] MCP Response:", {
+                            input_params: data.debug_info.input_params,
+                            executed_query: data.debug_info.executed_query,
+                            query_params: data.debug_info.query_params,
+                            rows_found: data.debug_info.rows_found,
+                            execution_time_ms: data.debug_info.execution_time_ms
+                        });
+                    }
                     displayDebugInfo(data.debug_info);
                 } else {
-                    console.log("[DEBUG] デバッグ情報なし");
+                    console.log("[DEBUG] No debug info available");
                     displayDebugInfo(null);
                 }
                 
