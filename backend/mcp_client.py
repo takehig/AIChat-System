@@ -75,18 +75,57 @@ class MCPClient:
             return []
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        import time
+        start_time = time.time()
+        
+        logger.info(f"[DEBUG] call_tool called with: {tool_name}, {arguments}")
+        
         try:
             params = {"name": tool_name, "arguments": arguments}
             result = await self._send_request("tools/call", params)
+            processing_time = round((time.time() - start_time) * 1000, 2)
+            
+            logger.info(f"[DEBUG] MCP server response: {result}")
             
             if "result" in result:
-                # debug_infoも含めて返す
-                response = {"result": result["result"]}
-                if "debug_info" in result:
-                    response["debug_info"] = result["debug_info"]
+                # debug_infoを生成
+                debug_info = {
+                    "tool_name": tool_name,
+                    "arguments": arguments,
+                    "server_url": self.server_url,
+                    "processing_time_ms": processing_time,
+                    "request_id": result.get("id"),
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                
+                logger.info(f"[DEBUG] Generated debug_info: {debug_info}")
+                
+                response = {
+                    "result": result["result"],
+                    "debug_info": debug_info
+                }
+                logger.info(f"[DEBUG] Final response: {response}")
                 return response
             else:
-                return {"error": "Tool execution failed"}
+                return {
+                    "error": "Tool execution failed",
+                    "debug_info": {
+                        "tool_name": tool_name,
+                        "server_url": self.server_url,
+                        "processing_time_ms": processing_time,
+                        "error": "No result in response"
+                    }
+                }
         except Exception as e:
+            processing_time = round((time.time() - start_time) * 1000, 2)
             logger.error(f"Tool call failed: {e}")
-            return {"error": str(e)}
+            return {
+                "error": str(e),
+                "debug_info": {
+                    "tool_name": tool_name,
+                    "server_url": self.server_url,
+                    "processing_time_ms": processing_time,
+                    "error_type": type(e).__name__,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+            }

@@ -69,11 +69,45 @@ class MCPManager:
         }
     async def process_with_mcp(self, message: str, mcp_id: str = 'productmaster'):
         """指定MCPでメッセージ処理"""
+        import time
+        start_time = time.time()
+        
         if mcp_id not in self.mcp_clients or not self.mcp_status.get(mcp_id, False):
-            return None
+            return {
+                "success": False,
+                "error": f"MCP {mcp_id} not available or disabled",
+                "debug_info": {
+                    "mcp_id": mcp_id,
+                    "available": mcp_id in self.mcp_clients,
+                    "enabled": self.mcp_status.get(mcp_id, False)
+                }
+            }
+        
         try:
             client = self.mcp_clients[mcp_id]
-            return await client.process_message(message)
+            result = await client.process_message(message)
+            processing_time = round((time.time() - start_time) * 1000, 2)
+            
+            # debug_infoを追加
+            if isinstance(result, dict):
+                result["debug_info"] = {
+                    "mcp_id": mcp_id,
+                    "processing_time_ms": processing_time,
+                    "message_length": len(message),
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+            
+            return result
         except Exception as e:
+            processing_time = round((time.time() - start_time) * 1000, 2)
             logger.error(f"MCP {mcp_id} processing error: {e}")
-            return None
+            return {
+                "success": False,
+                "error": str(e),
+                "debug_info": {
+                    "mcp_id": mcp_id,
+                    "processing_time_ms": processing_time,
+                    "error_type": type(e).__name__,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+            }
