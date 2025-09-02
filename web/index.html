@@ -447,9 +447,8 @@
                 }
                 
                 const data = await response.json();
-                console.log("[CHAT DEBUG] API応答受信:", data);
                 
-                // デバッグ情報を分離して出力
+                // デバッグ情報を先に分離して出力
                 if (data.debug_info) {
                     if (data.debug_info.mcp_request_info) {
                         console.log("[DEBUG] MCP Request:", {
@@ -472,6 +471,8 @@
                     console.log("[DEBUG] No debug info available");
                     displayDebugInfo(null);
                 }
+                
+                console.log("[CHAT DEBUG] API応答受信:", data);
                 
                 // 送信中表示を削除
                 loadingDiv.remove();
