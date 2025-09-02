@@ -395,8 +395,9 @@
             
             const request = debugInfo.request || {};
             const response = debugInfo.response || {};
+            const toolDebug = response.tool_debug || {};
             
-            const debugHtml = `
+            let debugHtml = `
                 <div class="mb-3">
                     <h6 class="fw-bold text-primary">リクエスト情報</h6>
                     <strong>ツール:</strong> ${request.tool_name || 'N/A'}<br>
@@ -409,13 +410,35 @@
                     <h6 class="fw-bold text-success">レスポンス情報</h6>
                     <strong>処理時間:</strong> ${response.processing_time_ms || 'N/A'}ms<br>
                     <strong>ステータス:</strong> ${response.status || 'N/A'}<br>
-                    <strong>結果件数:</strong> ${response.rows_found || 0}件<br>
-                    <strong>実行クエリ:</strong>
-                    <pre class="bg-light p-2 small" style="white-space: pre-wrap;">${response.executed_query || 'N/A'}</pre>
-                    <strong>クエリパラメータ:</strong>
-                    <pre class="bg-light p-2 small">${JSON.stringify(response.query_params || [], null, 2)}</pre>
+                    <strong>リクエストID:</strong> ${response.request_id || 'N/A'}
                 </div>
             `;
+            
+            // Tool Debug情報を動的表示
+            if (Object.keys(toolDebug).length > 0) {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-info">🔧 Tool Debug Information</h6>
+                        <div class="tool-debug-items">
+                `;
+                
+                Object.entries(toolDebug).forEach(([key, value]) => {
+                    const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    const displayValue = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+                    debugHtml += `
+                        <div class="debug-item mb-2">
+                            <strong>${displayKey}:</strong>
+                            <pre class="bg-light p-2 small mt-1" style="white-space: pre-wrap;">${displayValue}</pre>
+                        </div>
+                    `;
+                });
+                
+                debugHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
             debugPanel.innerHTML = debugHtml;
         }
 

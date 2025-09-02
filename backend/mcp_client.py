@@ -99,7 +99,8 @@ class MCPClient:
                     "response": {
                         "processing_time_ms": processing_time,
                         "request_id": result.get("id"),
-                        "status": "success"
+                        "status": "success",
+                        "tool_debug": result.get("debug_response", {})
                     }
                 }
                 
