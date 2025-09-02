@@ -76,13 +76,18 @@ async def chat(request: ChatRequest):
         # AI Agentでメッセージ処理
         result = await ai_agent.process_message(request.message)
         
+        # debug_info確認ログ
+        debug_info = result.get("debug_info")
+        logger.info(f"[DEBUG] Final debug_info in main.py: {debug_info}")
+        logger.info(f"[DEBUG] Full result keys: {list(result.keys())}")
+        
         return ChatResponse(
             message=result["message"],
             timestamp=datetime.now().isoformat(),
             tools_used=result.get("tools_used", []),
             mcp_enabled=result.get("mcp_enabled", False),
             error=result.get("error"),
-            debug_info=result.get("debug_info")
+            debug_info=debug_info
         )
         
     except Exception as e:
