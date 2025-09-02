@@ -88,6 +88,11 @@ class MCPClient:
             logger.info(f"[DEBUG] MCP server response: {result}")
             
             if "result" in result:
+                # debug_responseの確認
+                debug_response = result.get("debug_response")
+                logger.info(f"[DEBUG] debug_response from server: {debug_response}")
+                logger.info(f"[DEBUG] debug_response type: {type(debug_response)}")
+                
                 # debug_infoを統合形式で生成
                 debug_info = {
                     "request": {
@@ -100,11 +105,12 @@ class MCPClient:
                         "processing_time_ms": processing_time,
                         "request_id": result.get("id"),
                         "status": "success",
-                        "tool_debug": result.get("debug_response", {})
+                        "tool_debug": debug_response
                     }
                 }
                 
                 logger.info(f"[DEBUG] Generated debug_info: {debug_info}")
+                logger.info(f"[DEBUG] tool_debug in debug_info: {debug_info['response']['tool_debug']}")
                 
                 response = {
                     "result": result["result"],
