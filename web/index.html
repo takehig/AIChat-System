@@ -651,12 +651,12 @@
             if (trace.step_type === 'llm_interaction') {
                 content += `
                     <div class="mb-2">
-                        <strong>📤 LLMプロンプト:</strong>
-                        <pre class="bg-dark text-light p-2 small mt-1 rounded" style="max-height: 200px; overflow-y: auto;">${escapeHtml(trace.llm_prompt)}</pre>
+                        <strong>📤 送信プロンプト:</strong>
+                        <pre class="bg-dark text-light p-2 small mt-1 rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">${escapeHtml(trace.llm_prompt || 'プロンプト情報なし')}</pre>
                     </div>
                     <div class="mb-2">
-                        <strong>📥 LLM回答:</strong>
-                        <pre class="bg-success text-white p-2 small mt-1 rounded" style="max-height: 200px; overflow-y: auto;">${escapeHtml(trace.llm_response)}</pre>
+                        <strong>📥 LLM回答結果:</strong>
+                        <pre class="bg-success text-white p-2 small mt-1 rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">${escapeHtml(trace.llm_response || 'レスポンス情報なし')}</pre>
                     </div>
                 `;
             }
