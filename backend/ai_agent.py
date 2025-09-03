@@ -1,7 +1,9 @@
 import json
 import boto3
 import logging
-from typing import Dict, Any, Optional
+import time
+from datetime import datetime
+from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from mcp_client import MCPClient
 
@@ -20,6 +22,66 @@ class Intent:
         if self.requires_tools is None:
             self.requires_tools = []
 
+@dataclass
+class ExecutionTrace:
+    timestamp: str
+    step_type: str  # "strategy_planning", "tool_execution", "llm_interaction"
+    step_name: str
+    llm_prompt: Optional[str] = None
+    llm_response: Optional[str] = None
+    input_data: Optional[Dict] = None
+    output_data: Optional[Dict] = None
+    execution_time_ms: Optional[float] = None
+
+@dataclass
+class DetailedStep:
+    step: int
+    tool: str
+    purpose: str
+    input_source: str  # "user_input" or "step_N_result"
+    input_extraction: str
+    expected_output: str
+
+@dataclass
+class DetailedStrategy:
+    reasoning: str
+    steps: List[DetailedStep]
+    data_flow: str
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> 'DetailedStrategy':
+        data = json.loads(json_str)
+        steps = [DetailedStep(**step) for step in data["steps"]]
+        return cls(
+            reasoning=data["reasoning"],
+            steps=steps,
+            data_flow=data["data_flow"]
+        )
+
+class DebugCollector:
+    def __init__(self):
+        self.traces: List[ExecutionTrace] = []
+    
+    def add_llm_trace(self, step_name: str, prompt: str, response: str, execution_time: float):
+        self.traces.append(ExecutionTrace(
+            timestamp=datetime.now().isoformat(),
+            step_type="llm_interaction",
+            step_name=step_name,
+            llm_prompt=prompt,
+            llm_response=response,
+            execution_time_ms=execution_time
+        ))
+    
+    def add_tool_trace(self, step_name: str, input_data: Dict, output_data: Dict, execution_time: float):
+        self.traces.append(ExecutionTrace(
+            timestamp=datetime.now().isoformat(),
+            step_type="tool_execution", 
+            step_name=step_name,
+            input_data=input_data,
+            output_data=output_data,
+            execution_time_ms=execution_time
+        ))
+
 class AIAgent:
     def __init__(self):
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
@@ -36,8 +98,42 @@ class AIAgent:
         self.available_tools = {}  # ツール名 -> ツール情報
         self.enabled_tools = set()  # 有効ツール一覧
         
-        # ツール名とMCPサーバーのマッピング（動的生成用）
-        self.tool_routing = {}
+        # デバッグ収集器
+        self.debug_collector = None
+    
+    async def call_claude_with_trace(self, system_prompt: str, user_message: str, step_name: str) -> str:
+        """LLM呼び出しをトレース付きで実行"""
+        start_time = time.time()
+        
+        # 完全なプロンプトを記録
+        full_prompt = f"System: {system_prompt}\n\nUser: {user_message}"
+        
+        try:
+            response = await self.call_claude(system_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            
+            # トレース記録
+            if self.debug_collector:
+                self.debug_collector.add_llm_trace(
+                    step_name=step_name,
+                    prompt=full_prompt,
+                    response=response,
+                    execution_time=execution_time
+                )
+            
+            return response
+        except Exception as e:
+            execution_time = (time.time() - start_time) * 1000
+            error_response = f"ERROR: {str(e)}"
+            
+            if self.debug_collector:
+                self.debug_collector.add_llm_trace(
+                    step_name=step_name,
+                    prompt=full_prompt,
+                    response=error_response,
+                    execution_time=execution_time
+                )
+            raise
     
     async def initialize(self):
         """AI Agent初期化"""
@@ -110,56 +206,42 @@ class AIAgent:
         return False
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
-        """メッセージ処理"""
+        """メッセージ処理（詳細戦略立案・決定論的実行）"""
         try:
-            # MCP利用可能時は意図解析
+            # デバッグ収集器初期化
+            self.debug_collector = DebugCollector()
+            
+            # MCP利用可能時は詳細戦略立案
             if self.mcp_available:
-                intent = await self.analyze_intent_dynamic(user_message)
+                # 詳細戦略立案
+                strategy = await self.plan_detailed_strategy(user_message)
                 
-                if intent.requires_tools:
-                    print(f"[AI_AGENT] === TOOL EXECUTION DECISION ===")
-                    print(f"[AI_AGENT] Tool requested: {intent.tool_name}")
-                    print(f"[AI_AGENT] Tool arguments: {intent.arguments}")
-                    
-                    # ツール名から適切なMCPクライアントを選択
-                    mcp_name = self.tool_routing.get(intent.tool_name)
-                    print(f"[AI_AGENT] Tool routing lookup: {intent.tool_name} -> {mcp_name}")
-                    print(f"[AI_AGENT] Available MCP clients: {list(self.mcp_clients.keys())}")
-                    print(f"[AI_AGENT] MCP client exists: {mcp_name in self.mcp_clients if mcp_name else False}")
-                    
-                    if mcp_name and mcp_name in self.mcp_clients:
-                        client = self.mcp_clients[mcp_name]
-                        print(f"[AI_AGENT] Using MCP client: {mcp_name}")
-                        print(f"[AI_AGENT] Client URL: {client.server_url}")
-                        
-                        # ツール実行
-                        tool_result = await client.call_tool(
-                            intent.tool_name, intent.arguments or {}
-                        )
-                        
-                        # debug_info確認ログ
-                        logger.info(f"[DEBUG] tool_result in ai_agent: {tool_result}")
-                        logger.info(f"[DEBUG] tool_result keys: {list(tool_result.keys()) if isinstance(tool_result, dict) else 'Not dict'}")
-                        
-                        # 結果整形
-                        response = await self.format_tool_result(
-                            user_message, intent.tool_name, tool_result
-                        )
-                        
-                        return {
-                            "message": response,
-                            "tools_used": [intent.tool_name],
-                            "mcp_enabled": True,
-                            "mcp_server": mcp_name,
-                            "debug_info": tool_result.get('debug_info', None)
-                        }
-                    else:
-                        return {
-                            "message": f"申し訳ございません。ツール '{intent.tool_name}' が見つかりません。",
-                            "tools_used": [],
-                            "mcp_enabled": True,
-                            "error": f"Tool not found: {intent.tool_name}"
-                        }
+                print(f"[AI_AGENT] === DETAILED STRATEGY PLANNING ===")
+                print(f"[AI_AGENT] Strategy: {strategy.reasoning}")
+                print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
+                
+                # 決定論的実行
+                execution_result = await self.execute_detailed_strategy(strategy, user_message)
+                
+                # 動的システムプロンプトで応答生成
+                response = await self.generate_contextual_response_with_strategy(
+                    user_message, execution_result
+                )
+                
+                return {
+                    "message": response,
+                    "tools_used": [r["tool"] for r in execution_result["results"]],
+                    "mcp_enabled": True,
+                    "debug_info": {
+                        "strategy": {
+                            "reasoning": strategy.reasoning,
+                            "steps": [step.__dict__ for step in strategy.steps],
+                            "data_flow": strategy.data_flow
+                        },
+                        "execution": execution_result,
+                        "debug_traces": execution_result["debug_traces"]
+                    }
+                }
             
             # 通常のAI応答
             response = await self.generate_ai_response(user_message)
@@ -173,9 +255,9 @@ class AIAgent:
             logger.error(f"Message processing error: {e}")
             return {
                 "message": "申し訳ございません。処理中にエラーが発生しました。",
-                "error": str(e),
                 "tools_used": [],
-                "mcp_enabled": False
+                "mcp_enabled": False,
+                "error": str(e)
             }
     
     async def execute_tools(self, tool_requests: list, tool_arguments: dict) -> list:
@@ -251,7 +333,54 @@ class AIAgent:
 
         return await self.call_claude(system_prompt, "上記を基に回答してください。")
     
-    async def analyze_intent_dynamic(self, message: str) -> Intent:
+    async def plan_detailed_strategy(self, user_message: str) -> DetailedStrategy:
+        """詳細な実行戦略を立案"""
+        enabled_tools = self.get_enabled_tools()
+        
+        tools_description = "\n".join([
+            f"- {name}: {info['usage_context']}"
+            for name, info in enabled_tools.items()
+        ])
+        
+        strategy_prompt = f"""ユーザーリクエストを分析し、詳細な実行プランを作成してください。
+
+利用可能ツール:
+{tools_description}
+
+以下のJSON形式で詳細プランを回答:
+{{
+    "reasoning": "戦略の理由",
+    "steps": [
+        {{
+            "step": 1,
+            "tool": "ツール名",
+            "purpose": "実行目的", 
+            "input_source": "user_input",
+            "input_extraction": "入力から何を抽出するか",
+            "expected_output": "期待される出力"
+        }},
+        {{
+            "step": 2,
+            "tool": "ツール名",
+            "purpose": "実行目的",
+            "input_source": "step_1_result",
+            "input_extraction": "前ステップ結果から何を抽出するか",
+            "expected_output": "期待される出力"
+        }}
+    ],
+    "data_flow": "データの流れの説明"
+}}
+
+input_sourceは "user_input" または "step_N_result" を指定
+input_extractionは具体的な抽出方法を記述"""
+
+        response = await self.call_claude_with_trace(
+            system_prompt=strategy_prompt,
+            user_message=user_message,
+            step_name="詳細戦略立案"
+        )
+        
+        return DetailedStrategy.from_json(response)
         """動的システムプロンプトでツール選択"""
         enabled_tools = self.get_enabled_tools()
         
@@ -390,3 +519,141 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
         except Exception as e:
             logger.error(f"Claude API error: {e}")
             raise
+    
+    async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> Dict[str, Any]:
+        """戦略に基づく決定論的実行"""
+        execution_context = {"user_input": user_message}
+        results = []
+        
+        for step in strategy.steps:
+            step_start_time = time.time()
+            
+            # 入力準備（決定論的、LLM不使用）
+            tool_input = self.prepare_tool_input(step, execution_context)
+            
+            # ツール直接実行
+            result = await self.execute_tool_directly(step.tool, tool_input)
+            
+            step_execution_time = (time.time() - step_start_time) * 1000
+            
+            # 結果を次ステップ用に保存
+            execution_context[f"step_{step.step}_result"] = result
+            
+            results.append({
+                "step": step.step,
+                "tool": step.tool,
+                "purpose": step.purpose,
+                "input": tool_input,
+                "result": result,
+                "execution_time_ms": step_execution_time
+            })
+            
+            # ツール実行トレース
+            if self.debug_collector:
+                self.debug_collector.add_tool_trace(
+                    step_name=f"Step_{step.step}_{step.tool}",
+                    input_data={"tool_input": tool_input, "step_info": step.__dict__},
+                    output_data=result,
+                    execution_time=step_execution_time
+                )
+        
+        return {
+            "strategy": strategy,
+            "results": results,
+            "debug_traces": self.debug_collector.traces if self.debug_collector else [],
+            "total_execution_time_ms": sum(r["execution_time_ms"] for r in results)
+        }
+    
+    def prepare_tool_input(self, step: DetailedStep, context: Dict) -> str:
+        """入力準備（決定論的、LLM不使用）"""
+        
+        if step.input_source == "user_input":
+            return context["user_input"]
+        
+        # 前ステップ結果から必要データを抽出
+        source_data = context.get(step.input_source, {})
+        
+        # 抽出方法に基づいてデータ変換
+        if step.input_extraction == "customer_ids":
+            return self.extract_customer_ids_text(source_data)
+        elif step.input_extraction == "product_codes":
+            return self.extract_product_codes_text(source_data)
+        elif step.input_extraction == "raw_result":
+            return json.dumps(source_data, ensure_ascii=False)
+        
+        # デフォルトは結果全体をテキスト化
+        return f"前回の結果: {json.dumps(source_data, ensure_ascii=False)}"
+    
+    def extract_customer_ids_text(self, data: Dict) -> str:
+        """顧客IDをテキスト形式で抽出"""
+        if isinstance(data, dict) and "data" in data:
+            customers = data["data"]
+            if isinstance(customers, list):
+                customer_ids = [str(c.get("customer_id", "")) for c in customers if c.get("customer_id")]
+                return f"顧客ID: {', '.join(customer_ids)}"
+        return "顧客IDが見つかりませんでした"
+    
+    def extract_product_codes_text(self, data: Dict) -> str:
+        """商品コードをテキスト形式で抽出"""
+        if isinstance(data, dict) and "data" in data:
+            products = data["data"]
+            if isinstance(products, list):
+                product_codes = [str(p.get("product_code", "")) for p in products if p.get("product_code")]
+                return f"商品コード: {', '.join(product_codes)}"
+        return "商品コードが見つかりませんでした"
+    
+    async def execute_tool_directly(self, tool_name: str, tool_input: str) -> Dict[str, Any]:
+        """ツールを直接実行"""
+        if tool_name not in self.available_tools:
+            return {"error": f"Tool '{tool_name}' not available"}
+        
+        if tool_name not in self.enabled_tools:
+            return {"error": f"Tool '{tool_name}' not enabled"}
+        
+        mcp_server_name = self.available_tools[tool_name]['mcp_server']
+        client = self.mcp_clients[mcp_server_name]
+        
+        try:
+            if await client.health_check():
+                # テキスト入力でツール実行
+                result = await client.call_tool(tool_name, {"text_input": tool_input})
+                return result
+            else:
+                return {"error": "MCP server unavailable"}
+        except Exception as e:
+    async def generate_contextual_response_with_strategy(self, user_message: str, execution_result: Dict) -> str:
+        """戦略実行結果を含む動的応答生成"""
+        if not execution_result["results"]:
+            return await self.call_claude(
+                "証券会社の社内情報システムとして、質問に適切に回答してください。",
+                user_message
+            )
+        
+        # 実行結果サマリー生成
+        strategy = execution_result["strategy"]
+        results = execution_result["results"]
+        
+        results_summary = "\n\n".join([
+            f"【Step {result['step']}: {result['tool']}】\n目的: {result['purpose']}\n結果: {json.dumps(result['result'], ensure_ascii=False, indent=2)}"
+            for result in results
+        ])
+        
+        # 動的システムプロンプト生成
+        system_prompt = f"""証券会社の社内情報システムとして回答してください。
+
+ユーザーの質問: {user_message}
+
+実行戦略: {strategy.reasoning}
+データフロー: {strategy.data_flow}
+
+実行結果:
+{results_summary}
+
+回答要件:
+- 質問の意図に応じて適切に回答
+- 実行した処理の流れを簡潔に説明
+- 最終的な結果を分かりやすく提示
+- 過度に営業的にならず、事実ベースで回答
+- 実行時間: {execution_result.get('total_execution_time_ms', 0)}ms"""
+
+        return await self.call_claude(system_prompt, "上記を基に回答してください。")
