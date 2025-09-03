@@ -226,62 +226,25 @@
         <main class="flex-grow-1 py-4">
             <div class="container-fluid">
                 <div class="row h-100">
-                    <!-- Left Column: MCP Controls -->
+                    <!-- Left Column: Tool Controls -->
                     <div class="col-md-4 col-lg-3">
                         <div class="card shadow-lg border-0 mb-4 h-100">
                             <div class="card-header bg-transparent border-0">
                                 <h5 class="card-title mb-0">
-                                    <i class="fas fa-cogs me-2"></i>
-                                    MCP 設定
+                                    <i class="fas fa-tools me-2"></i>
+                                    ツール設定
                                 </h5>
                             </div>
                             <div class="card-body p-3">
-                                <!-- ProductMaster MCP Card -->
-                                <div class="card border-0 shadow-sm mcp-card mb-3" id="productMasterCard">
-                                    <div class="card-body p-3">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="fas fa-database text-primary me-2 fs-5"></i>
-                                            <h6 class="card-title mb-0 fw-bold">ProductMaster</h6>
-                                            <span id="productMasterStatus" class="badge bg-secondary ms-auto">読み込み中...</span>
-                                        </div>
-                                        <p class="card-text small text-muted mb-2">
-                                            金融商品データベースへのアクセス
-                                        </p>
-                                        <ul class="list-unstyled small mb-3 mcp-tools" id="productMasterTools">
-                                            <li><i class="fas fa-code text-primary me-1"></i> <code>search_products_flexible</code> - 柔軟な商品検索</li>
-                                            <li><i class="fas fa-code text-primary me-1"></i> <code>get_product_details</code> - 商品詳細取得</li>
-                                            <li><i class="fas fa-code text-primary me-1"></i> <code>get_all_products</code> - 全商品取得</li>
-                                            <li><i class="fas fa-code text-primary me-1"></i> <code>get_statistics</code> - 統計情報取得</li>
-                                        </ul>
-                                        <button id="productMasterMcpBtn" class="btn btn-outline-primary btn-sm w-100" onclick="toggleProductMasterMCP()">
-                                            <i class="fas fa-toggle-off me-1"></i> 有効化
-                                        </button>
+                                <!-- 動的ツール制御エリア -->
+                                <div id="toolControls">
+                                    <div class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>
+                                        ツール情報を読み込み中...
                                     </div>
                                 </div>
                                 
-                                <!-- CRM MCP Card -->
-                                <div class="card border-0 shadow-sm mcp-card mb-3" id="crmCard">
-                                    <div class="card-body p-3">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <i class="fas fa-users text-info me-2 fs-5"></i>
-                                            <h6 class="card-title mb-0 fw-bold">CRM</h6>
-                                            <span id="crmStatus" class="badge bg-secondary ms-auto">読み込み中...</span>
-                                        </div>
-                                        <p class="card-text small text-muted mb-2">
-                                            顧客管理システムとの連携
-                                        </p>
-                                        <ul class="list-unstyled small mb-3 mcp-tools" id="crmTools">
-                                            <li><i class="fas fa-code text-info me-1"></i> <code>search_customers</code> - 顧客情報を検索します</li>
-                                            <li><i class="fas fa-code text-info me-1"></i> <code>get_customer_holdings</code> - 顧客の保有商品情報を取得します</li>
-                                            <li><i class="fas fa-code text-info me-1"></i> <code>search_customers_by_bond_maturity</code> - 債券の満期日条件で顧客を検索します</li>
-                                        </ul>
-                                        <button id="crmMcpBtn" class="btn btn-outline-primary btn-sm w-100" onclick="toggleCrmMCP()">
-                                            <i class="fas fa-toggle-off me-1"></i> 有効化
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- 全ツールテストボタン -->
+                                <!-- ツールテストボタン -->
                                 <div class="card border-0 shadow-sm mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                                     <div class="card-body p-3 text-white">
                                         <div class="d-flex align-items-center mb-2">
@@ -289,10 +252,10 @@
                                             <h6 class="card-title mb-0 fw-bold">ツールテスト</h6>
                                         </div>
                                         <p class="card-text small mb-2 opacity-75">
-                                            全MCPツールの動作確認
+                                            有効ツールの動作確認
                                         </p>
-                                        <button id="testAllToolsBtn" class="btn btn-light btn-sm w-100" onclick="testAllMcpTools()">
-                                            <i class="fas fa-play me-1"></i> 全ツールテスト実行
+                                        <button id="testEnabledToolsBtn" class="btn btn-light btn-sm w-100" onclick="testEnabledTools()">
+                                            <i class="fas fa-play me-1"></i> 有効ツールテスト実行
                                         </button>
                                     </div>
                                 </div>
@@ -374,6 +337,158 @@
     <script src="productmaster_mcp_functions.js"></script>
     <script src="common_functions.js"></script>
     <script>
+        // ツール制御関数
+        async function loadToolControls() {
+            console.log('[TOOL CONTROL] ツール情報読み込み開始');
+            try {
+                const response = await fetch('/aichat/api/tools');
+                const data = await response.json();
+                
+                console.log('[TOOL CONTROL] ツール情報取得:', data);
+                
+                const controlsHtml = Object.entries(data.available_tools || {}).map(([toolName, toolInfo]) => {
+                    const isEnabled = data.enabled_tools.includes(toolName);
+                    const iconClass = getToolIcon(toolName);
+                    const colorClass = getToolColor(toolName);
+                    
+                    return `
+                        <div class="card border-0 shadow-sm mb-2" id="tool-${toolName}">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fas ${iconClass} ${colorClass} me-2"></i>
+                                            <h6 class="mb-0 fw-bold">${toolInfo.description}</h6>
+                                        </div>
+                                        <p class="small text-muted mb-0">${toolInfo.usage_context}</p>
+                                    </div>
+                                    <button class="btn btn-sm ${isEnabled ? 'btn-success' : 'btn-outline-secondary'}" 
+                                            onclick="toggleTool('${toolName}')">
+                                        <i class="fas ${isEnabled ? 'fa-toggle-on' : 'fa-toggle-off'} me-1"></i>
+                                        ${isEnabled ? '有効' : '無効'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                document.getElementById('toolControls').innerHTML = controlsHtml || '<div class="text-muted text-center">利用可能なツールがありません</div>';
+                
+            } catch (error) {
+                console.error('[TOOL CONTROL] ツール情報読み込みエラー:', error);
+                document.getElementById('toolControls').innerHTML = `
+                    <div class="text-danger text-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ツール情報の読み込みに失敗しました
+                    </div>
+                `;
+            }
+        }
+        
+        function getToolIcon(toolName) {
+            if (toolName.includes('product')) return 'fa-box';
+            if (toolName.includes('customer')) return 'fa-users';
+            if (toolName.includes('search')) return 'fa-search';
+            if (toolName.includes('statistics')) return 'fa-chart-bar';
+            return 'fa-tool';
+        }
+        
+        function getToolColor(toolName) {
+            if (toolName.includes('product')) return 'text-primary';
+            if (toolName.includes('customer')) return 'text-info';
+            return 'text-secondary';
+        }
+        
+        async function toggleTool(toolName) {
+            console.log(`[TOOL CONTROL] ツール切り替え: ${toolName}`);
+            try {
+                const response = await fetch(`/aichat/api/tools/${toolName}/toggle`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    console.log(`[TOOL CONTROL] ${toolName} ${result.enabled ? '有効化' : '無効化'}`);
+                    updateToolButton(toolName, result.enabled);
+                } else {
+                    console.error(`[TOOL CONTROL] ツール切り替えエラー:`, result.message);
+                }
+            } catch (error) {
+                console.error(`[TOOL CONTROL] ツール切り替えエラー:`, error);
+            }
+        }
+        
+        function updateToolButton(toolName, enabled) {
+            const button = document.querySelector(`#tool-${toolName} button`);
+            if (button) {
+                button.className = `btn btn-sm ${enabled ? 'btn-success' : 'btn-outline-secondary'}`;
+                button.innerHTML = `
+                    <i class="fas ${enabled ? 'fa-toggle-on' : 'fa-toggle-off'} me-1"></i>
+                    ${enabled ? '有効' : '無効'}
+                `;
+            }
+        }
+        
+        // 有効ツールテスト関数
+        async function testEnabledTools() {
+            console.log("[TOOL TEST] 有効ツールテスト開始");
+            
+            try {
+                const response = await fetch('/aichat/api/tools');
+                const data = await response.json();
+                const enabledTools = data.enabled_tools || [];
+                
+                if (enabledTools.length === 0) {
+                    console.log("[TOOL TEST] 有効なツールがありません");
+                    return;
+                }
+                
+                for (const toolName of enabledTools) {
+                    await testSingleTool(toolName);
+                }
+                
+                console.log("[TOOL TEST] 有効ツールテスト完了");
+            } catch (error) {
+                console.error("[TOOL TEST] テスト実行エラー:", error);
+            }
+        }
+        
+        async function testSingleTool(toolName) {
+            const testMessage = getTestMessageForTool(toolName);
+            console.log(`[TOOL TEST] ${toolName} テスト開始: "${testMessage}"`);
+            
+            try {
+                const response = await fetch('/aichat/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: testMessage})
+                });
+                
+                const result = await response.json();
+                console.log(`[TOOL TEST] ${toolName} 結果:`, {
+                    success: !result.error,
+                    tools_used: result.tools_used,
+                    error: result.error
+                });
+            } catch (error) {
+                console.error(`[TOOL TEST] ${toolName} エラー:`, error);
+            }
+        }
+        
+        function getTestMessageForTool(toolName) {
+            const testMessages = {
+                'search_products_flexible': '債券商品を検索してテスト',
+                'get_product_details': '商品詳細取得テスト',
+                'get_all_products': '全商品取得テスト',
+                'get_statistics': '商品統計テスト',
+                'search_customers': '顧客検索テスト',
+                'get_customer_holdings': '顧客保有商品テスト',
+                'search_customers_by_bond_maturity': '2年以内に満期を迎える債券を持っている顧客をテスト検索'
+            };
+            return testMessages[toolName] || `${toolName}のテスト実行`;
+        }
+
         // AIChat System Version
         const AICHAT_VERSION = '2.8.2';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
@@ -597,6 +712,14 @@
                 }
             }
         }
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log(`AIChat System v${AICHAT_VERSION} - 初期化開始`);
+            
+            // ツール制御を読み込み
+            loadToolControls();
+        });
 
         // Enterキーでメッセージ送信
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
