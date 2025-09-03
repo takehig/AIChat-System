@@ -114,9 +114,9 @@ class AIAgent:
         try:
             # MCP利用可能時は意図解析
             if self.mcp_available:
-                intent = await self.analyze_intent(user_message)
+                intent = await self.analyze_intent_dynamic(user_message)
                 
-                if intent.requires_tool and intent.tool_name:
+                if intent.requires_tools:
                     print(f"[AI_AGENT] === TOOL EXECUTION DECISION ===")
                     print(f"[AI_AGENT] Tool requested: {intent.tool_name}")
                     print(f"[AI_AGENT] Tool arguments: {intent.arguments}")
@@ -177,6 +177,79 @@ class AIAgent:
                 "tools_used": [],
                 "mcp_enabled": False
             }
+    
+    async def execute_tools(self, tool_requests: list, tool_arguments: dict) -> list:
+        """複数ツールの実行"""
+        results = []
+        for tool_name in tool_requests:
+            if tool_name not in self.available_tools:
+                results.append({"tool": tool_name, "error": "Tool not available"})
+                continue
+                
+            if tool_name not in self.enabled_tools:
+                results.append({"tool": tool_name, "error": "Tool not enabled"})
+                continue
+            
+            mcp_server_name = self.available_tools[tool_name]['mcp_server']
+            client = self.mcp_clients[mcp_server_name]
+            
+            try:
+                if await client.health_check():
+                    result = await client.call_tool(tool_name, tool_arguments.get(tool_name, {}))
+                    results.append({"tool": tool_name, "result": result})
+                else:
+                    results.append({"tool": tool_name, "error": "MCP server unavailable"})
+            except Exception as e:
+                results.append({"tool": tool_name, "error": str(e)})
+        
+        return results
+    
+    def merge_tool_debug_info(self, tool_results: list) -> dict:
+        """複数ツールのデバッグ情報をマージ"""
+        merged_debug = {}
+        for result in tool_results:
+            tool_name = result["tool"]
+            if "result" in result and isinstance(result["result"], dict):
+                debug_info = result["result"].get("debug_info", {})
+                if debug_info:
+                    merged_debug[tool_name] = debug_info
+        return merged_debug
+    
+    async def generate_contextual_response_with_tools(self, user_message: str, tool_results: list) -> str:
+        """ツール結果を含む動的応答生成"""
+        if not tool_results:
+            return await self.call_claude(
+                "証券会社の社内情報システムとして、質問に適切に回答してください。",
+                user_message
+            )
+        
+        # 使用ツール情報を動的生成
+        tools_used = [result["tool"] for result in tool_results if "result" in result]
+        tools_failed = [result["tool"] for result in tool_results if "error" in result]
+        
+        tools_summary = "\n\n".join([
+            f"【{result['tool']}の結果】\n{json.dumps(result.get('result', result.get('error')), ensure_ascii=False, indent=2)}"
+            for result in tool_results
+        ])
+        
+        # 動的システムプロンプト生成
+        system_prompt = f"""証券会社の社内情報システムとして回答してください。
+
+ユーザーの質問: {user_message}
+
+実行したツール: {', '.join(tools_used) if tools_used else 'なし'}
+{f'実行に失敗したツール: {", ".join(tools_failed)}' if tools_failed else ''}
+
+ツール実行結果:
+{tools_summary}
+
+回答要件:
+- 質問の意図に応じて適切に回答
+- 使用したツール名を回答の最後に明記: 「※使用ツール: {', '.join(tools_used)}」
+- 過度に営業的にならず、事実ベースで回答
+{f'- 失敗したツールがある場合は、その旨を説明' if tools_failed else ''}"""
+
+        return await self.call_claude(system_prompt, "上記を基に回答してください。")
     
     async def analyze_intent_dynamic(self, message: str) -> Intent:
         """動的システムプロンプトでツール選択"""

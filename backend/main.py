@@ -171,6 +171,40 @@ async def toggle_crm_mcp():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/tools")
+async def get_all_tools():
+    """全ツール情報取得（個別制御用）"""
+    global ai_agent
+    
+    if not ai_agent:
+        return {"available_tools": {}, "enabled_tools": []}
+    
+    return {
+        "available_tools": ai_agent.available_tools,
+        "enabled_tools": list(ai_agent.enabled_tools)
+    }
+
+@app.post("/api/tools/{tool_name}/toggle")
+async def toggle_tool(tool_name: str):
+    """個別ツールのON/OFF切り替え"""
+    global ai_agent
+    
+    if not ai_agent:
+        return {"status": "error", "message": "AI Agent not initialized"}
+    
+    if tool_name not in ai_agent.available_tools:
+        return {"status": "error", "message": f"Tool '{tool_name}' not found"}
+    
+    enabled = ai_agent.toggle_tool(tool_name)
+    logger.info(f"Tool {tool_name} {'enabled' if enabled else 'disabled'}")
+    
+    return {
+        "status": "success", 
+        "tool_name": tool_name,
+        "enabled": enabled,
+        "message": f"Tool '{tool_name}' {'enabled' if enabled else 'disabled'}"
+    }
+
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():
     """利用可能なMCPツール一覧取得"""
