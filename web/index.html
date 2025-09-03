@@ -341,7 +341,7 @@
         async function loadToolControls() {
             console.log('[TOOL CONTROL] ツール情報読み込み開始');
             try {
-                const response = await fetch('/aichat/api/tools');
+                const response = await fetch('/api/tools');
                 const data = await response.json();
                 
                 console.log('[TOOL CONTROL] ツール情報取得:', data);
@@ -403,7 +403,7 @@
         async function toggleTool(toolName) {
             console.log(`[TOOL CONTROL] ツール切り替え: ${toolName}`);
             try {
-                const response = await fetch(`/aichat/api/tools/${toolName}/toggle`, {
+                const response = await fetch(`/api/tools/${toolName}/toggle`, {
                     method: 'POST'
                 });
                 const result = await response.json();
@@ -435,7 +435,7 @@
             console.log("[TOOL TEST] 有効ツールテスト開始");
             
             try {
-                const response = await fetch('/aichat/api/tools');
+                const response = await fetch('/api/tools');
                 const data = await response.json();
                 const enabledTools = data.enabled_tools || [];
                 
