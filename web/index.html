@@ -302,6 +302,23 @@
                         </div>
                     </div>
                     
+                    <!-- Strategy Panel -->
+                    <div class="col-md-3 col-lg-3 mb-3">
+                        <div class="card shadow-lg border-0 h-100">
+                            <div class="card-header bg-transparent border-0">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-chess me-2"></i>
+                                    実行戦略
+                                </h5>
+                            </div>
+                            <div class="card-body p-3" style="overflow-y: auto;">
+                                <div id="strategyPanel" class="small">
+                                    <div class="text-muted">戦略立案時に表示されます</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Debug Panel -->
                     <div class="col-md-3 col-lg-3">
                         <div class="card shadow-lg border-0 h-100">
@@ -591,21 +608,95 @@
             return tools.map(tool => `<code class="bg-primary text-white px-1 rounded">${tool}</code>`).join(', ');
         }
         
-        function getExecutionSummary(results) {
-            if (!results || results.length === 0) return 'なし';
-            
-            const successful = results.filter(r => 'result' in r).length;
-            const failed = results.filter(r => 'error' in r).length;
-            const total = results.length;
-            
-            let summary = `${total}個中 `;
-            if (successful > 0) summary += `<span class="text-success">${successful}個成功</span>`;
-            if (failed > 0) {
-                if (successful > 0) summary += ', ';
-                summary += `<span class="text-danger">${failed}個失敗</span>`;
+        function displayEnhancedDebugInfo(debugInfo) {
+            const debugPanel = document.getElementById('debugPanel');
+            if (!debugInfo || !debugInfo.debug_traces) {
+                debugPanel.innerHTML = '<div class="text-muted">デバッグ情報なし</div>';
+                return;
             }
             
-            return summary;
+            let debugHtml = `
+                <div class="mb-3">
+                    <h6 class="fw-bold text-primary">🎯 実行戦略</h6>
+                    <div class="bg-light p-2 rounded">
+                        <strong>戦略:</strong> ${debugInfo.strategy?.reasoning || 'N/A'}<br>
+                        <strong>データフロー:</strong> ${debugInfo.strategy?.data_flow || 'N/A'}<br>
+                        <strong>総実行時間:</strong> ${debugInfo.execution?.total_execution_time_ms || 0}ms
+                    </div>
+                </div>
+            `;
+            
+            // 実行トレースを時系列順に表示
+            debugInfo.debug_traces.forEach((trace, index) => {
+                debugHtml += generateTraceHtml(trace, index + 1);
+            });
+            
+            debugPanel.innerHTML = debugHtml;
+        }
+
+        function generateTraceHtml(trace, stepNumber) {
+            const stepIcon = getStepIcon(trace.step_type);
+            const stepColor = getStepColor(trace.step_type);
+            
+            let content = `
+                <div class="border ${stepColor} rounded p-3 mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="me-2">${stepIcon}</span>
+                        <strong>Step ${stepNumber}: ${trace.step_name}</strong>
+                        <span class="badge bg-secondary ms-auto">${trace.execution_time_ms || 0}ms</span>
+                    </div>
+            `;
+            
+            if (trace.step_type === 'llm_interaction') {
+                content += `
+                    <div class="mb-2">
+                        <strong>📤 LLMプロンプト:</strong>
+                        <pre class="bg-dark text-light p-2 small mt-1 rounded" style="max-height: 200px; overflow-y: auto;">${escapeHtml(trace.llm_prompt)}</pre>
+                    </div>
+                    <div class="mb-2">
+                        <strong>📥 LLM回答:</strong>
+                        <pre class="bg-success text-white p-2 small mt-1 rounded" style="max-height: 200px; overflow-y: auto;">${escapeHtml(trace.llm_response)}</pre>
+                    </div>
+                `;
+            }
+            
+            if (trace.step_type === 'tool_execution') {
+                content += `
+                    <div class="mb-2">
+                        <strong>🔧 入力データ:</strong>
+                        <pre class="bg-info text-white p-2 small mt-1 rounded">${JSON.stringify(trace.input_data, null, 2)}</pre>
+                    </div>
+                    <div class="mb-2">
+                        <strong>📊 出力データ:</strong>
+                        <pre class="bg-warning text-dark p-2 small mt-1 rounded" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(trace.output_data, null, 2)}</pre>
+                    </div>
+                `;
+            }
+            
+            content += `</div>`;
+            return content;
+        }
+
+        function getStepIcon(stepType) {
+            switch(stepType) {
+                case 'llm_interaction': return '🤖';
+                case 'tool_execution': return '🔧';
+                default: return '📋';
+            }
+        }
+
+        function getStepColor(stepType) {
+            switch(stepType) {
+                case 'llm_interaction': return 'border-primary';
+                case 'tool_execution': return 'border-success';
+                default: return 'border-secondary';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         async function sendMessage() {
@@ -640,15 +731,18 @@
                 
                 const data = await response.json();
                 
-                // API応答をコンソールに出力（debug_info統合済み）
+                // API応答をコンソールに出力（新デバッグシステム対応）
                 console.log("[CHAT DEBUG] API応答受信:", data);
                 
-                // デバッグ情報を画面に表示
+                // 新デバッグ情報を画面に表示
                 if (data.debug_info) {
-                    displayDebugInfo(data.debug_info);
+                    console.log("[DEBUG] 新デバッグシステム検出:", data.debug_info);
+                    displayStrategy(data.debug_info);
+                    displayEnhancedDebugInfo(data.debug_info);
                 } else {
                     console.log("[DEBUG] No debug info available");
-                    displayDebugInfo(null);
+                    displayStrategy(null);
+                    displayEnhancedDebugInfo(null);
                 }
                 
                 // 送信中表示を削除
@@ -779,6 +873,71 @@
                 sendMessage();
             }
         });
+
+        function displayStrategy(debugInfo) {
+            const strategyPanel = document.getElementById('strategyPanel');
+            if (!debugInfo || !debugInfo.strategy) {
+                strategyPanel.innerHTML = '<div class="text-muted">戦略情報なし</div>';
+                return;
+            }
+            
+            const strategy = debugInfo.strategy;
+            const execution = debugInfo.execution;
+            
+            let strategyHtml = `
+                <div class="mb-3">
+                    <h6 class="fw-bold text-info">🎯 戦略概要</h6>
+                    <p class="small mb-2">${strategy.reasoning}</p>
+                    <div class="small text-muted">
+                        <strong>データフロー:</strong> ${strategy.data_flow}
+                    </div>
+                </div>
+            `;
+            
+            if (strategy.steps && strategy.steps.length > 0) {
+                strategyHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-success">📋 実行ステップ</h6>
+                        <ol class="small mb-0">
+                `;
+                
+                strategy.steps.forEach((step, index) => {
+                    const executionResult = execution?.results?.find(r => r.step === step.step);
+                    const statusIcon = executionResult ? '✅' : '⏳';
+                    const executionTime = executionResult ? `(${executionResult.execution_time_ms}ms)` : '';
+                    
+                    strategyHtml += `
+                        <li class="mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">${statusIcon}</span>
+                                <strong>${step.tool}</strong>
+                                <small class="text-muted ms-auto">${executionTime}</small>
+                            </div>
+                            <div class="text-muted small">
+                                ${step.purpose}
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                strategyHtml += `
+                        </ol>
+                    </div>
+                `;
+            }
+            
+            if (execution?.total_execution_time_ms) {
+                strategyHtml += `
+                    <div class="bg-light p-2 rounded">
+                        <small class="text-muted">
+                            <strong>総実行時間:</strong> ${execution.total_execution_time_ms}ms
+                        </small>
+                    </div>
+                `;
+            }
+            
+            strategyPanel.innerHTML = strategyHtml;
+        }
     </script>
 </body>
 </html>
