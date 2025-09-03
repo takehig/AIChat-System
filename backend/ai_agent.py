@@ -13,6 +13,12 @@ class Intent:
     tool_name: Optional[str] = None
     arguments: Optional[Dict[str, Any]] = None
     confidence: float = 0.0
+    # 複数ツール対応
+    requires_tools: list = None
+    
+    def __post_init__(self):
+        if self.requires_tools is None:
+            self.requires_tools = []
 
 class AIAgent:
     def __init__(self):
@@ -26,16 +32,12 @@ class AIAgent:
         }
         self.mcp_available = False
         
-        # ツール名とMCPサーバーのマッピング
-        self.tool_routing = {
-            'search_products_flexible': 'productmaster',
-            'get_product_details': 'productmaster', 
-            'get_all_products': 'productmaster',
-            'get_statistics': 'productmaster',
-            'search_customers': 'crm',
-            'get_customer_holdings': 'crm',
-            'search_customers_by_bond_maturity': 'crm'
-        }
+        # ツール個別管理
+        self.available_tools = {}  # ツール名 -> ツール情報
+        self.enabled_tools = set()  # 有効ツール一覧
+        
+        # ツール名とMCPサーバーのマッピング（動的生成用）
+        self.tool_routing = {}
     
     async def initialize(self):
         """AI Agent初期化"""
@@ -58,8 +60,54 @@ class AIAgent:
             self.mcp_available = available_count > 0
             if self.mcp_available:
                 logger.info(f"MCP integration enabled ({available_count} servers)")
+                # ツール情報を収集
+                await self.discover_available_tools()
         except Exception as e:
             logger.error(f"AI Agent initialization error: {e}")
+    
+    async def discover_available_tools(self):
+        """全MCPサーバーからツール情報を収集"""
+        self.available_tools = {}
+        self.tool_routing = {}
+        
+        for mcp_name, client in self.mcp_clients.items():
+            try:
+                if await client.health_check():
+                    # ツール情報APIを呼び出し
+                    tools_response = await client.get_tool_descriptions()
+                    if tools_response and "tools" in tools_response:
+                        for tool in tools_response["tools"]:
+                            tool_name = tool["name"]
+                            self.available_tools[tool_name] = {
+                                'mcp_server': mcp_name,
+                                'description': tool.get('description', ''),
+                                'usage_context': tool.get('usage_context', ''),
+                                'parameters': tool.get('parameters', {})
+                            }
+                            self.tool_routing[tool_name] = mcp_name
+                            logger.info(f"Discovered tool: {tool_name} from {mcp_name}")
+            except Exception as e:
+                logger.error(f"Failed to discover tools from {mcp_name}: {e}")
+        
+        logger.info(f"Total tools discovered: {len(self.available_tools)}")
+    
+    def get_enabled_tools(self):
+        """有効なツールのみ返す"""
+        return {
+            name: info for name, info in self.available_tools.items()
+            if name in self.enabled_tools
+        }
+    
+    def toggle_tool(self, tool_name: str) -> bool:
+        """ツールの有効/無効を切り替え"""
+        if tool_name in self.available_tools:
+            if tool_name in self.enabled_tools:
+                self.enabled_tools.remove(tool_name)
+                return False
+            else:
+                self.enabled_tools.add(tool_name)
+                return True
+        return False
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
         """メッセージ処理"""
@@ -130,7 +178,46 @@ class AIAgent:
                 "mcp_enabled": False
             }
     
-    async def analyze_intent(self, message: str) -> Intent:
+    async def analyze_intent_dynamic(self, message: str) -> Intent:
+        """動的システムプロンプトでツール選択"""
+        enabled_tools = self.get_enabled_tools()
+        
+        if not enabled_tools:
+            return Intent(requires_tool=False, requires_tools=[], confidence=0.0)
+        
+        # 動的ツール説明生成
+        tools_description = "\n".join([
+            f"- {name}: {info['usage_context']}"
+            for name, info in enabled_tools.items()
+        ])
+        
+        system_prompt = f"""ユーザーのメッセージを分析し、必要なツールを判定してください。
+
+現在利用可能なツール:
+{tools_description}
+
+以下のJSON形式で回答してください：
+{{"requires_tools": ["ツール名1", "ツール名2"], "tool_arguments": {{"ツール名1": {{"param": "value"}}}}, "confidence": 0.0-1.0}}
+
+判定ルール:
+- 複数ツールが必要な場合は配列で指定
+- ツールが不要な場合は requires_tools を空配列に
+- 引数は各ツールのパラメータに基づいて設定
+- confidenceは判定の確信度（0.0-1.0）"""
+        
+        try:
+            response = await self.call_claude(system_prompt, message)
+            data = json.loads(response)
+            return Intent(
+                requires_tool=len(data.get('requires_tools', [])) > 0,
+                requires_tools=data.get('requires_tools', []),
+                tool_name=data.get('requires_tools', [None])[0],  # 後方互換性
+                arguments=data.get('tool_arguments', {}),
+                confidence=data.get('confidence', 0.0)
+            )
+        except Exception as e:
+            logger.error(f"Dynamic intent analysis error: {e}")
+            return Intent(requires_tool=False, requires_tools=[], confidence=0.0)
         """意図解析"""
         system_prompt = """あなたは金融商品検索アシスタントです。
 ユーザーのメッセージを分析し、以下のツールが必要か判定してください。
