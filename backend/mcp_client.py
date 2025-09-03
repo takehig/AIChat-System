@@ -71,27 +71,34 @@ class MCPClient:
                 return self.available_tools
             return []
         except Exception as e:
-            logger.error(f"Tools list failed: {e}")
+            print(f"[MCP_CLIENT] Tools list failed: {e}")
             return []
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         import time
         start_time = time.time()
         
-        logger.info(f"[DEBUG] call_tool called with: {tool_name}, {arguments}")
+        print(f"[MCP_CLIENT] === CALL_TOOL START ===")
+        print(f"[MCP_CLIENT] Tool: {tool_name}")
+        print(f"[MCP_CLIENT] Arguments: {arguments}")
+        print(f"[MCP_CLIENT] Server URL: {self.server_url}")
         
         try:
             params = {"name": tool_name, "arguments": arguments}
+            print(f"[MCP_CLIENT] About to send request with params: {params}")
+            
             result = await self._send_request("tools/call", params)
+            
+            print(f"[MCP_CLIENT] Request completed successfully")
             processing_time = round((time.time() - start_time) * 1000, 2)
             
-            logger.info(f"[DEBUG] MCP server response: {result}")
+            print(f"[MCP_CLIENT] MCP server response: {result}")
             
             if "result" in result:
                 # debug_responseの確認
                 debug_response = result.get("debug_response")
-                logger.info(f"[DEBUG] debug_response from server: {debug_response}")
-                logger.info(f"[DEBUG] debug_response type: {type(debug_response)}")
+                print(f"[MCP_CLIENT] debug_response from server: {debug_response}")
+                print(f"[MCP_CLIENT] debug_response type: {type(debug_response)}")
                 
                 # debug_infoを統合形式で生成
                 debug_info = {
@@ -109,14 +116,15 @@ class MCPClient:
                     }
                 }
                 
-                logger.info(f"[DEBUG] Generated debug_info: {debug_info}")
-                logger.info(f"[DEBUG] tool_debug in debug_info: {debug_info['response']['tool_debug']}")
+                print(f"[MCP_CLIENT] Generated debug_info: {debug_info}")
+                print(f"[MCP_CLIENT] tool_debug in debug_info: {debug_info['response']['tool_debug']}")
                 
                 response = {
                     "result": result["result"],
                     "debug_info": debug_info
                 }
-                logger.info(f"[DEBUG] Final response: {response}")
+                print(f"[MCP_CLIENT] Final response: {response}")
+                print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
                 return response
             else:
                 return {
@@ -137,7 +145,12 @@ class MCPClient:
                 }
         except Exception as e:
             processing_time = round((time.time() - start_time) * 1000, 2)
-            logger.error(f"Tool call failed: {e}")
+            print(f"[MCP_CLIENT] === CALL_TOOL ERROR ===")
+            print(f"[MCP_CLIENT] Exception occurred: {e}")
+            print(f"[MCP_CLIENT] Exception type: {type(e)}")
+            import traceback
+            print(f"[MCP_CLIENT] Traceback: {traceback.format_exc()}")
+            
             return {
                 "error": str(e),
                 "debug_info": {
