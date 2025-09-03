@@ -69,10 +69,21 @@ class AIAgent:
                 intent = await self.analyze_intent(user_message)
                 
                 if intent.requires_tool and intent.tool_name:
+                    print(f"[AI_AGENT] === TOOL EXECUTION DECISION ===")
+                    print(f"[AI_AGENT] Tool requested: {intent.tool_name}")
+                    print(f"[AI_AGENT] Tool arguments: {intent.arguments}")
+                    
                     # ツール名から適切なMCPクライアントを選択
                     mcp_name = self.tool_routing.get(intent.tool_name)
+                    print(f"[AI_AGENT] Tool routing lookup: {intent.tool_name} -> {mcp_name}")
+                    print(f"[AI_AGENT] Available MCP clients: {list(self.mcp_clients.keys())}")
+                    print(f"[AI_AGENT] MCP client exists: {mcp_name in self.mcp_clients if mcp_name else False}")
+                    
                     if mcp_name and mcp_name in self.mcp_clients:
                         client = self.mcp_clients[mcp_name]
+                        print(f"[AI_AGENT] Using MCP client: {mcp_name}")
+                        print(f"[AI_AGENT] Client URL: {client.server_url}")
+                        
                         # ツール実行
                         tool_result = await client.call_tool(
                             intent.tool_name, intent.arguments or {}
