@@ -37,10 +37,6 @@ class ExecutionTrace:
 class DetailedStep:
     step: int
     tool: str
-    purpose: str
-    input_source: str  # "user_input" or "step_N_result"
-    input_extraction: str
-    expected_output: str
 
 @dataclass
 class DetailedStrategy:
@@ -337,42 +333,40 @@ class AIAgent:
         """詳細な実行戦略を立案"""
         enabled_tools = self.get_enabled_tools()
         
+        if not enabled_tools:
+            # ツールが無い場合は空の戦略を返す
+            return DetailedStrategy(
+                reasoning="利用可能なツールがないため、通常のAI応答を実行",
+                steps=[],
+                data_flow="ツール実行なし"
+            )
+        
         tools_description = "\n".join([
             f"- {name}: {info['usage_context']}"
             for name, info in enabled_tools.items()
         ])
         
-        strategy_prompt = f"""ユーザーリクエストを分析し、詳細な実行プランを作成してください。
+        strategy_prompt = f"""ユーザーリクエストを分析し、必要なツールの実行順序のみを決定してください。
 
 利用可能ツール:
 {tools_description}
 
-以下のJSON形式で詳細プランを回答:
+重要な判定ルール:
+1. ツールが不要な場合は steps を空配列 [] にする
+2. 必要な場合のみツール名と実行順序を指定
+3. 複雑な属性は不要、シンプルな順序のみ
+
+以下のJSON形式で回答:
 {{
-    "reasoning": "戦略の理由",
+    "reasoning": "ツール使用判定の理由（簡潔に）",
     "steps": [
-        {{
-            "step": 1,
-            "tool": "ツール名",
-            "purpose": "実行目的", 
-            "input_source": "user_input",
-            "input_extraction": "入力から何を抽出するか",
-            "expected_output": "期待される出力"
-        }},
-        {{
-            "step": 2,
-            "tool": "ツール名",
-            "purpose": "実行目的",
-            "input_source": "step_1_result",
-            "input_extraction": "前ステップ結果から何を抽出するか",
-            "expected_output": "期待される出力"
-        }}
+        {{"step": 1, "tool": "ツール名"}},
+        {{"step": 2, "tool": "ツール名"}}
     ],
-    "data_flow": "データの流れの説明"
+    "data_flow": "実行フローの概要（簡潔に）"
 }}
 
-input_sourceは "user_input" または "step_N_result" を指定
-input_extractionは具体的な抽出方法を記述"""
+ツールが不要な一般的質問・挨拶の場合は必ず steps: [] を返してください。"""
 
         response = await self.call_claude_with_trace(
             system_prompt=strategy_prompt,
@@ -492,22 +486,20 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
     def prepare_tool_input(self, step: DetailedStep, context: Dict) -> str:
         """入力準備（決定論的、LLM不使用）"""
         
-        if step.input_source == "user_input":
+        # 最初のステップは常にユーザー入力
+        if step.step == 1:
             return context["user_input"]
         
-        # 前ステップ結果から必要データを抽出
-        source_data = context.get(step.input_source, {})
+        # 2番目以降は前ステップの結果から顧客IDを抽出
+        prev_step_key = f"step_{step.step - 1}_result"
+        source_data = context.get(prev_step_key, {})
         
-        # 抽出方法に基づいてデータ変換
-        if step.input_extraction == "customer_ids":
+        # 顧客検索結果から顧客IDを抽出
+        if step.tool == "get_customer_holdings":
             return self.extract_customer_ids_text(source_data)
-        elif step.input_extraction == "product_codes":
-            return self.extract_product_codes_text(source_data)
-        elif step.input_extraction == "raw_result":
-            return json.dumps(source_data, ensure_ascii=False)
         
         # デフォルトは結果全体をテキスト化
-        return f"前回の結果: {json.dumps(source_data, ensure_ascii=False)}"
+        return json.dumps(source_data, ensure_ascii=False)
     
     def extract_customer_ids_text(self, data: Dict) -> str:
         """顧客IDをテキスト形式で抽出"""
