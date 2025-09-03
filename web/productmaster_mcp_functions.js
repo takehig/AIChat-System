@@ -2,7 +2,7 @@
 async function toggleProductMasterMCP() {
     console.log('[PRODUCTMASTER DEBUG] ボタンクリック: ProductMaster MCP toggle');
     try {
-        const response = await fetch('/aichat/api/mcp/productmaster/toggle', {
+        const response = await fetch('http://44.217.45.24:8002/api/mcp/productmaster/toggle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -41,7 +41,7 @@ function updateProductMasterMCPButton(status) {
 async function initializeProductMasterMCP() {
     try {
         console.log("[PRODUCTMASTER DEBUG] 初期化: /aichat/api/mcp/productmaster/status");
-        const response = await fetch('/aichat/api/mcp/productmaster/status');
+        const response = await fetch('http://44.217.45.24:8002/api/mcp/productmaster/status');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }

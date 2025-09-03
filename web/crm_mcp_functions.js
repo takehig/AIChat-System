@@ -3,7 +3,7 @@ async function toggleCrmMCP() {
     console.log("CRM MCP toggle clicked");
     try {
         console.log("[CRM DEBUG] API呼び出し開始: /aichat/api/mcp/crm/toggle");
-        const response = await fetch("/aichat/api/mcp/crm/toggle", {
+        const response = await fetch("http://44.217.45.24:8002/api/mcp/crm/toggle", {
             method: "POST",
             headers: { "Content-Type": "application/json" }
         });
@@ -43,7 +43,7 @@ function updateCrmMCPButton(status) {
 async function initializeCrmMCP() {
     try {
         console.log("[CRM DEBUG] 初期化: /aichat/api/mcp/crm/status");
-        const response = await fetch("/aichat/api/mcp/crm/status");
+        const response = await fetch("http://44.217.45.24:8002/api/mcp/crm/status");
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }

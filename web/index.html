@@ -456,8 +456,8 @@
             const loadingDiv = addMessageToChat('ai', 'メッセージを処理中...');
             
             try {
-                console.log("[CHAT DEBUG] API呼び出し開始: /aichat/api/chat");
-                const response = await fetch('/aichat/api/chat', {
+                console.log("[CHAT DEBUG] API呼び出し開始: http://44.217.45.24:8002/api/chat");
+                const response = await fetch('http://44.217.45.24:8002/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -577,7 +577,7 @@
                 try {
                     console.log(`[${mcpType} TOOL TEST] ${testCase.tool} テスト開始`);
                     
-                    const response = await fetch('/aichat/api/chat', {
+                    const response = await fetch('http://44.217.45.24:8002/api/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: testCase.message })
