@@ -621,6 +621,8 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
             else:
                 return {"error": "MCP server unavailable"}
         except Exception as e:
+            return {"error": str(e)}
+    
     async def generate_contextual_response_with_strategy(self, user_message: str, execution_result: Dict) -> str:
         """戦略実行結果を含む動的応答生成"""
         if not execution_result["results"]:
