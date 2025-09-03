@@ -510,51 +510,102 @@
             
             const request = debugInfo.request || {};
             const response = debugInfo.response || {};
-            const toolDebug = response.tool_debug || {};
             
             let debugHtml = `
                 <div class="mb-3">
-                    <h6 class="fw-bold text-primary">リクエスト情報</h6>
-                    <strong>ツール:</strong> ${request.tool_name || 'N/A'}<br>
-                    <strong>引数:</strong>
-                    <pre class="bg-light p-2 small">${JSON.stringify(request.arguments || {}, null, 2)}</pre>
-                    <strong>サーバー:</strong> ${request.server_url || 'N/A'}<br>
-                    <strong>送信時刻:</strong> ${request.timestamp || 'N/A'}
+                    <h6 class="fw-bold text-primary">🔍 リクエスト情報</h6>
+                    <div class="bg-light p-2 rounded">
+                        <strong>要求ツール:</strong> ${formatToolsList(request.tools_requested)}<br>
+                        <strong>信頼度:</strong> ${request.confidence || 'N/A'}<br>
+                        <strong>引数:</strong>
+                        <pre class="bg-white p-2 small mt-1 border rounded">${JSON.stringify(request.arguments || {}, null, 2)}</pre>
+                    </div>
                 </div>
+                
                 <div class="mb-3">
-                    <h6 class="fw-bold text-success">レスポンス情報</h6>
-                    <strong>処理時間:</strong> ${response.processing_time_ms || 'N/A'}ms<br>
-                    <strong>ステータス:</strong> ${response.status || 'N/A'}<br>
-                    <strong>リクエストID:</strong> ${response.request_id || 'N/A'}
+                    <h6 class="fw-bold text-success">✅ 実行結果</h6>
+                    <div class="bg-light p-2 rounded">
+                        <strong>実行ツール:</strong> ${formatToolsList(response.tools_executed)}<br>
+                        <strong>実行状況:</strong> ${getExecutionSummary(response.execution_results)}<br>
+                    </div>
                 </div>
             `;
             
-            // Tool Debug情報を動的表示
-            if (Object.keys(toolDebug).length > 0) {
+            // 複数ツールの実行結果を表示
+            if (response.execution_results && response.execution_results.length > 0) {
                 debugHtml += `
                     <div class="mb-3">
-                        <h6 class="fw-bold text-info">🔧 Tool Debug Information</h6>
-                        <div class="tool-debug-items">
+                        <h6 class="fw-bold text-info">🔧 ツール実行詳細</h6>
                 `;
                 
-                Object.entries(toolDebug).forEach(([key, value]) => {
-                    const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    const displayValue = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+                response.execution_results.forEach((result, index) => {
+                    const isSuccess = 'result' in result;
+                    const statusIcon = isSuccess ? '✅' : '❌';
+                    const statusClass = isSuccess ? 'border-success' : 'border-danger';
+                    
                     debugHtml += `
-                        <div class="debug-item mb-2">
-                            <strong>${displayKey}:</strong>
-                            <pre class="bg-light p-2 small mt-1" style="white-space: pre-wrap;">${displayValue}</pre>
+                        <div class="border ${statusClass} rounded p-2 mb-2">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="me-2">${statusIcon}</span>
+                                <strong>${result.tool}</strong>
+                                <span class="badge ${isSuccess ? 'bg-success' : 'bg-danger'} ms-auto">
+                                    ${isSuccess ? '成功' : '失敗'}
+                                </span>
+                            </div>
+                            <div class="small">
+                                <strong>結果:</strong>
+                                <pre class="bg-white p-2 mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(result.result || result.error, null, 2)}</pre>
+                            </div>
                         </div>
                     `;
                 });
                 
+                debugHtml += `</div>`;
+            }
+            
+            // Tool Debug情報を表示（従来の形式も維持）
+            const toolDebug = response.tool_debug || {};
+            if (Object.keys(toolDebug).length > 0) {
                 debugHtml += `
-                        </div>
-                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-warning">🛠️ ツールデバッグ情報</h6>
                 `;
+                
+                Object.entries(toolDebug).forEach(([toolName, debugData]) => {
+                    debugHtml += `
+                        <div class="border border-warning rounded p-2 mb-2">
+                            <strong class="text-warning">${toolName}:</strong>
+                            <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(debugData, null, 2)}</pre>
+                        </div>
+                    `;
+                });
+                
+                debugHtml += `</div>`;
             }
             
             debugPanel.innerHTML = debugHtml;
+        }
+        
+        function formatToolsList(tools) {
+            if (!tools || tools.length === 0) return 'なし';
+            return tools.map(tool => `<code class="bg-primary text-white px-1 rounded">${tool}</code>`).join(', ');
+        }
+        
+        function getExecutionSummary(results) {
+            if (!results || results.length === 0) return 'なし';
+            
+            const successful = results.filter(r => 'result' in r).length;
+            const failed = results.filter(r => 'error' in r).length;
+            const total = results.length;
+            
+            let summary = `${total}個中 `;
+            if (successful > 0) summary += `<span class="text-success">${successful}個成功</span>`;
+            if (failed > 0) {
+                if (successful > 0) summary += ', ';
+                summary += `<span class="text-danger">${failed}個失敗</span>`;
+            }
+            
+            return summary;
         }
 
         async function sendMessage() {
