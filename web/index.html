@@ -605,7 +605,8 @@
                     <div class="bg-light p-2 rounded">
                         <strong>実行状態:</strong> ${strategy.is_executed ? '完了' : '未完了'}<br>
                         <strong>総実行時間:</strong> ${strategy.total_execution_time_ms || 0}ms<br>
-                        <strong>ステップ数:</strong> ${strategy.steps.length}
+                        <strong>ステップ数:</strong> ${strategy.steps.length}<br>
+                        <small class="text-muted">Debug: is_executed=${strategy.is_executed}, total_time=${strategy.total_execution_time_ms}</small>
                     </div>
                 </div>
             `;
