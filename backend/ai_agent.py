@@ -226,8 +226,9 @@ class AIAgent:
                 strategy = await self.plan_detailed_strategy(user_message)
                 
                 print(f"[AI_AGENT] === DETAILED STRATEGY PLANNING ===")
-                print(f"[AI_AGENT] Strategy: {strategy.reasoning}")
                 print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
+                if strategy.steps:
+                    print(f"[AI_AGENT] Tools: {[step.tool for step in strategy.steps]}")
                 
                 # 決定論的実行
                 executed_strategy = await self.execute_detailed_strategy(strategy, user_message)
