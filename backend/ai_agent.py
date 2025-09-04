@@ -250,7 +250,7 @@ class AIAgent:
                             "steps": [{"step": s.step, "tool": s.tool, "input": s.input, "output": s.output, "execution_time_ms": s.execution_time_ms} for s in executed_strategy.steps],
                             "total_execution_time_ms": sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
                         },
-                        "debug_traces": execution_result["debug_traces"]
+                        "debug_traces": []  # デバッグトレースは新設計では不要
                     }
                 }
             
