@@ -36,7 +36,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     timestamp: str
-    strategy: Optional[Dict[str, Any]] = None  # DetailedStrategyオブジェクト
+    strategy: Optional[Any] = None  # DetailedStrategyオブジェクト（Any型で受け入れ）
     mcp_enabled: bool = False
     error: Optional[str] = None
 

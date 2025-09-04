@@ -78,13 +78,18 @@ class DetailedStrategy:
     
     @classmethod
     def from_json(cls, json_str: str) -> 'DetailedStrategy':
-        data = json.loads(json_str)
-        steps = [DetailedStep(
-            step=step["step"],
-            tool=step["tool"], 
-            reason=step["reason"]
-        ) for step in data["steps"]]
-        return cls(steps=steps)
+        try:
+            data = json.loads(json_str)
+            steps = [DetailedStep(
+                step=step["step"],
+                tool=step["tool"], 
+                reason=step["reason"]
+            ) for step in data.get("steps", [])]
+            return cls(steps=steps)
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.error(f"DetailedStrategy.from_json error: {e}, input: {json_str}")
+            # エラー時は空の戦略を返す
+            return cls(steps=[])
 
 class AIAgent:
     def __init__(self):
