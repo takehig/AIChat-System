@@ -345,16 +345,15 @@ class AIAgent:
 
 ## 重要な判定ルール
 1. ユーザーが明示的に要求していない情報は取得しない
-2. 一般的な商品情報要求には get_product_details のみ使用
-3. 顧客情報が明示的に要求された場合のみ顧客関連ツールを使用
-4. ツールが不要な場合は steps を空配列 [] にする
+2. 利用可能ツールの中から適切なものを選択する
+3. ツールが不要な場合は steps を空配列 [] にする
+4. 複数ツールの無駄な組み合わせを避ける
 
-## 具体的な判定基準
-- "〇〇について教えて" → get_product_details のみ
-- "〇〇を保有している顧客は？" → search_customers_by_bond_maturity または get_customer_holdings
-- "満期が近い〇〇の顧客は？" → search_customers_by_bond_maturity
-- "△△さんの保有状況は？" → get_customer_holdings
-- 一般的な挨拶・質問 → steps: []
+## 判定の考え方
+- 情報要求の種類を特定する（商品情報、顧客情報、その他）
+- 利用可能ツールの説明文と照らし合わせる
+- 明示的に要求されていない情報は取得しない
+- 一般的な挨拶や質問にはツールは不要
 
 ## 出力形式（必須）
 以下の形式の純粋なJSONのみを返してください。説明文・前置き・後置きは一切不要です。
@@ -365,23 +364,23 @@ class AIAgent:
     ]
 }}
 
-## 出力例
-商品情報のみ要求:
-{{"steps": [{{"step": 1, "tool": "get_product_details", "reason": "商品詳細を取得するため"}}]}}
+## 出力例（架空のツール使用）
+情報取得が必要:
+{{"steps": [{{"step": 1, "tool": "example_tool", "reason": "要求された情報を取得するため"}}]}}
 
-顧客情報も要求:
-{{"steps": [{{"step": 1, "tool": "get_product_details", "reason": "商品詳細を取得するため"}}, {{"step": 2, "tool": "search_customers_by_bond_maturity", "reason": "該当顧客を検索するため"}}]}}
+複数ツール必要:
+{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
 
 ツール不要:
 {{"steps": []}}
 
 ## 禁止事項
 - 明示的に要求されていない情報の取得禁止
-- 複数ツールの無駄な組み合わせ禁止
+- 利用可能ツール以外の使用禁止
 - JSON以外のテキスト出力禁止
 - 説明文・コメント・前置き禁止
 
-ユーザーが明示的に要求した情報のみを取得する最小限のツール選択をしてください。"""
+利用可能ツールの中から、ユーザーが明示的に要求した情報のみを取得する最小限のツール選択をしてください。"""
 
         response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(
             system_prompt=strategy_prompt,
