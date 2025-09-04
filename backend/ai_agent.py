@@ -348,7 +348,6 @@ class AIAgent:
         enabled_tools = self.get_enabled_tools()
         
         if not enabled_tools:
-        if not enabled_tools:
             # ツールが無い場合は空の戦略を返す
             return DetailedStrategy(steps=[])
         
