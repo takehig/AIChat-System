@@ -609,9 +609,9 @@
             return tools.map(tool => `<code class="bg-primary text-white px-1 rounded">${tool}</code>`).join(', ');
         }
         
-        function displayEnhancedDebugInfo(debugInfo) {
+        function displayEnhancedDebugInfo(strategy) {
             const debugPanel = document.getElementById('debugPanel');
-            if (!debugInfo || !debugInfo.debug_traces) {
+            if (!strategy || !strategy.steps) {
                 debugPanel.innerHTML = '<div class="text-muted">デバッグ情報なし</div>';
                 return;
             }
@@ -620,16 +620,34 @@
                 <div class="mb-3">
                     <h6 class="fw-bold text-primary">🎯 実行戦略</h6>
                     <div class="bg-light p-2 rounded">
-                        <strong>戦略:</strong> ${debugInfo.strategy?.reasoning || 'N/A'}<br>
-                        <strong>データフロー:</strong> ${debugInfo.strategy?.data_flow || 'N/A'}<br>
-                        <strong>総実行時間:</strong> ${debugInfo.execution?.total_execution_time_ms || 0}ms
+                        <strong>実行状態:</strong> ${strategy.is_executed ? '完了' : '未完了'}<br>
+                        <strong>総実行時間:</strong> ${strategy.total_execution_time_ms || 0}ms<br>
+                        <strong>ステップ数:</strong> ${strategy.steps.length}
                     </div>
                 </div>
             `;
             
-            // 実行トレースを時系列順に表示
-            debugInfo.debug_traces.forEach((trace, index) => {
-                debugHtml += generateTraceHtml(trace, index + 1);
+            // 各ステップの詳細デバッグ情報を表示
+            strategy.steps.forEach((step, index) => {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-info">🔧 Step ${step.step}: ${step.tool}</h6>
+                        <div class="border border-info rounded p-2">
+                            <div class="mb-2">
+                                <strong>理由:</strong> ${step.reason}
+                            </div>
+                            <div class="mb-2">
+                                <strong>実行時間:</strong> ${step.execution_time_ms ? Math.round(step.execution_time_ms) + 'ms' : 'N/A'}
+                            </div>
+                            ${step.debug_info ? `
+                                <div class="mb-2">
+                                    <strong>デバッグ情報:</strong>
+                                    <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(step.debug_info, null, 2)}</pre>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
             });
             
             debugPanel.innerHTML = debugHtml;
@@ -736,12 +754,12 @@
                 console.log("[CHAT DEBUG] API応答受信:", data);
                 
                 // 新デバッグ情報を画面に表示
-                if (data.debug_info) {
-                    console.log("[DEBUG] 新デバッグシステム検出:", data.debug_info);
-                    displayStrategy(data.debug_info);
-                    displayEnhancedDebugInfo(data.debug_info);
+                if (data.strategy) {
+                    console.log("[DEBUG] 新デバッグシステム検出:", data.strategy);
+                    displayStrategy(data.strategy);
+                    displayEnhancedDebugInfo(data.strategy);
                 } else {
-                    console.log("[DEBUG] No debug info available");
+                    console.log("[DEBUG] No strategy info available");
                     displayStrategy(null);
                     displayEnhancedDebugInfo(null);
                 }
@@ -850,7 +868,7 @@
                         tools_used: result.tools_used,
                         mcp_enabled: result.mcp_enabled,
                         error: result.error,
-                        debug_info: result.debug_info
+                        strategy: result.strategy
                     });
                     
                 } catch (error) {
@@ -875,22 +893,19 @@
             }
         });
 
-        function displayStrategy(debugInfo) {
+        function displayStrategy(strategy) {
             const strategyPanel = document.getElementById('strategyPanel');
-            if (!debugInfo || !debugInfo.strategy) {
+            if (!strategy || !strategy.steps) {
                 strategyPanel.innerHTML = '<div class="text-muted">戦略情報なし</div>';
                 return;
             }
             
-            const strategy = debugInfo.strategy;
-            const execution = debugInfo.execution;
-            
             let strategyHtml = `
                 <div class="mb-3">
                     <h6 class="fw-bold text-info">🎯 戦略概要</h6>
-                    <p class="small mb-2">${strategy.reasoning}</p>
                     <div class="small text-muted">
-                        <strong>データフロー:</strong> ${strategy.data_flow}
+                        <strong>総実行時間:</strong> ${strategy.total_execution_time_ms || 0}ms<br>
+                        <strong>実行状態:</strong> ${strategy.is_executed ? '完了' : '未完了'}
                     </div>
                 </div>
             `;
@@ -903,9 +918,8 @@
                 `;
                 
                 strategy.steps.forEach((step, index) => {
-                    const executionResult = execution?.results?.find(r => r.step === step.step);
-                    const statusIcon = executionResult ? '✅' : '⏳';
-                    const executionTime = executionResult ? `(${executionResult.execution_time_ms}ms)` : '';
+                    const statusIcon = step.output ? '✅' : '⏳';
+                    const executionTime = step.execution_time_ms ? `(${Math.round(step.execution_time_ms)}ms)` : '';
                     
                     strategyHtml += `
                         <li class="mb-2">
@@ -915,7 +929,7 @@
                                 <small class="text-muted ms-auto">${executionTime}</small>
                             </div>
                             <div class="text-muted small">
-                                ${step.purpose}
+                                ${step.reason}
                             </div>
                         </li>
                     `;
@@ -923,16 +937,6 @@
                 
                 strategyHtml += `
                         </ol>
-                    </div>
-                `;
-            }
-            
-            if (execution?.total_execution_time_ms) {
-                strategyHtml += `
-                    <div class="bg-light p-2 rounded">
-                        <small class="text-muted">
-                            <strong>総実行時間:</strong> ${execution.total_execution_time_ms}ms
-                        </small>
                     </div>
                 `;
             }
