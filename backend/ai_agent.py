@@ -438,14 +438,7 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
             clean_result = {k: v for k, v in result.items() if k != "debug_info"} if isinstance(result, dict) else result
             current_input = json.dumps(clean_result, ensure_ascii=False)
             
-            # ツール実行トレース
-            if self.debug_collector:
-                self.debug_collector.add_tool_trace(
-                    step_name=f"Step_{step.step}_{step.tool}",
-                    input_data={"tool_input": step.input, "step_info": {"step": step.step, "tool": step.tool, "reason": step.reason}},
-                    output_data=result,
-                    execution_time=step.execution_time_ms
-                )
+            print(f"[AI_AGENT] Step {step.step} completed: {step.tool} ({step.execution_time_ms:.2f}ms)")
         
         return strategy  # 実行結果が埋め込まれた同じオブジェクト
     
