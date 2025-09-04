@@ -9,12 +9,16 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from ai_agent import AIAgent
+from conversation_manager import ConversationManager
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AIChat System with MCP Integration", version="2.1.0")
+
+# 会話履歴管理
+conversation_manager = ConversationManager()
 
 # CORS設定
 app.add_middleware(
@@ -70,10 +74,29 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=503, detail="AI Agent not initialized")
     
     try:
+        # セッションID取得
+        session_id = conversation_manager.get_session_id({})
+        
+        # 前回の会話履歴を取得
+        conversation_context = conversation_manager.get_conversation_context(session_id)
+        
+        # 会話履歴を含めたメッセージを作成
+        enhanced_message = conversation_context + request.message if conversation_context else request.message
+        
         logger.info(f"Processing message: {request.message[:50]}...")
+        if conversation_context:
+            logger.info(f"Using conversation context: {len(conversation_context)} chars")
         
         # AI Agentでメッセージ処理
-        result = await ai_agent.process_message(request.message)
+        result = await ai_agent.process_message(enhanced_message)
+        
+        # 会話履歴に保存
+        conversation_manager.add_message(
+            session_id=session_id,
+            user_message=request.message,  # 元のメッセージのみ保存
+            ai_response=result["message"],
+            strategy_info=result.get("strategy", {}).to_dict() if result.get("strategy") else {}
+        )
         
         # strategy確認ログ
         strategy = result.get("strategy")
@@ -90,6 +113,17 @@ async def chat(request: ChatRequest):
         
     except Exception as e:
         logger.error(f"Chat processing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/clear-conversation")
+async def clear_conversation():
+    """会話履歴をクリア"""
+    try:
+        session_id = conversation_manager.get_session_id({})
+        conversation_manager.clear_session(session_id)
+        return {"status": "success", "message": "会話履歴をクリアしました"}
+    except Exception as e:
+        logger.error(f"Clear conversation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/status", response_model=SystemStatus)
