@@ -66,7 +66,14 @@ class DetailedStrategy:
         return {
             "steps": [step.__dict__ for step in self.steps],
             "is_executed": self.is_executed(),
-            "total_execution_time_ms": sum(s.execution_time_ms or 0 for s in self.steps)
+            "total_execution_time_ms": sum(s.execution_time_ms or 0 for s in self.steps),
+            # LLM情報追加
+            "strategy_llm_prompt": self.strategy_llm_prompt,
+            "strategy_llm_response": self.strategy_llm_response,
+            "strategy_llm_execution_time_ms": self.strategy_llm_execution_time_ms,
+            "final_llm_prompt": self.final_llm_prompt,
+            "final_llm_response": self.final_llm_response,
+            "final_llm_execution_time_ms": self.final_llm_execution_time_ms
         }
     
     @classmethod
@@ -97,7 +104,19 @@ class AIAgent:
         
         # デバッグ収集器（削除）
     
-    async def call_claude_with_trace(self, system_prompt: str, user_message: str, step_name: str) -> str:
+    async def call_claude_with_llm_info(self, system_prompt: str, user_message: str) -> tuple[str, str, str, float]:
+        """LLM呼び出し（プロンプト・応答・実行時間を返却）"""
+        start_time = time.time()
+        full_prompt = f"System: {system_prompt}\n\nUser: {user_message}"
+        
+        try:
+            response = await self.call_claude(system_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            return response, full_prompt, response, execution_time
+        except Exception as e:
+            execution_time = (time.time() - start_time) * 1000
+            error_response = f"ERROR: {str(e)}"
+            return error_response, full_prompt, error_response, execution_time
     
     async def initialize(self):
         """AI Agent初期化"""
