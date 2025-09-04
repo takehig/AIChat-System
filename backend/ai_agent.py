@@ -461,7 +461,6 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
             results.append({
                 "step": step.step,
                 "tool": step.tool,
-                "purpose": step.purpose,
                 "input": tool_input,
                 "result": result,
                 "execution_time_ms": step_execution_time
@@ -553,7 +552,7 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
         results = execution_result["results"]
         
         results_summary = "\n\n".join([
-            f"【Step {result['step']}: {result['tool']}】\n目的: {result['purpose']}\n結果: {json.dumps(result['result'], ensure_ascii=False, indent=2)}"
+            f"【Step {result['step']}: {result['tool']}】\n結果: {json.dumps(result['result'], ensure_ascii=False, indent=2)}"
             for result in results
         ])
         
