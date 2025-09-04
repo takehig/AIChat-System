@@ -53,6 +53,11 @@ class DetailedStrategy:
     final_llm_response: Optional[str] = None
     final_llm_execution_time_ms: Optional[float] = None
     
+    # エラーハンドリング情報
+    parse_error: bool = False
+    parse_error_message: str = ""
+    raw_response: str = ""
+    
     def is_executed(self) -> bool:
         """実行済みかどうか判定"""
         return all(step.output is not None for step in self.steps)
@@ -88,8 +93,18 @@ class DetailedStrategy:
             return cls(steps=steps)
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             logger.error(f"DetailedStrategy.from_json error: {e}, input: {json_str}")
-            # エラー時は空の戦略を返す
-            return cls(steps=[])
+            # エラー時は戦略立案失敗を示すステップを返す
+            error_step = DetailedStep(
+                step=1,
+                tool="strategy_parse_error",
+                reason=f"戦略立案時のJSON解析エラー: {str(e)}"
+            )
+            return cls(
+                steps=[error_step], 
+                parse_error=True, 
+                parse_error_message=str(e), 
+                raw_response=json_str
+            )
 
 class AIAgent:
     def __init__(self):
@@ -323,16 +338,19 @@ class AIAgent:
             for name, info in enabled_tools.items()
         ])
         
-        strategy_prompt = f"""ユーザーリクエストを分析し、必要なツールの実行順序を決定してください。
+        strategy_prompt = f"""あなたは戦略立案の専門家です。ユーザーリクエストを分析し、必要なツールの実行順序を決定してください。
 
 利用可能ツール:
 {tools_description}
 
-重要な判定ルール:
+## 重要な判定ルール
 1. ツールが不要な場合は steps を空配列 [] にする
 2. 必要な場合のみツール名と実行順序と理由を指定
+3. 必ず純粋なJSON配列形式で回答する
 
-以下のJSON形式で回答:
+## 出力形式（必須）
+以下の形式の純粋なJSONのみを返してください。説明文・前置き・後置きは一切不要です。
+
 {{
     "steps": [
         {{"step": 1, "tool": "ツール名", "reason": "このツールを使う理由"}},
@@ -340,7 +358,19 @@ class AIAgent:
     ]
 }}
 
-ツールが不要な一般的質問・挨拶の場合は必ず steps: [] を返してください。"""
+## 出力例
+ツールが必要な場合:
+{{"steps": [{{"step": 1, "tool": "get_product_details", "reason": "商品詳細を取得するため"}}]}}
+
+ツールが不要な場合:
+{{"steps": []}}
+
+## 禁止事項
+- JSON以外のテキスト出力禁止
+- 説明文・コメント・前置き禁止
+- 複数行にわたる説明禁止
+
+純粋なJSON形式のみで回答してください。"""
 
         response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(
             system_prompt=strategy_prompt,
@@ -421,6 +451,24 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
     async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> DetailedStrategy:
         """戦略に基づく決定論的実行 - 同じオブジェクトに実行結果を埋め込み"""
         current_input = user_message
+        
+        # 戦略立案エラーの場合は特別処理
+        if strategy.parse_error:
+            error_step = strategy.steps[0]  # エラーステップ
+            error_step.input = current_input
+            error_step.output = {
+                "error": "戦略立案でJSON解析エラーが発生しました",
+                "parse_error_message": strategy.parse_error_message,
+                "raw_llm_response": strategy.raw_response,
+                "suggestion": "システムプロンプトの改善が必要です"
+            }
+            error_step.execution_time_ms = 0
+            error_step.debug_info = {
+                "parse_error": True,
+                "error_message": strategy.parse_error_message,
+                "raw_response": strategy.raw_response
+            }
+            return strategy
         
         for step in strategy.steps:
             step_start_time = time.time()
