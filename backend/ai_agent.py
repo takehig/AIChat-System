@@ -369,7 +369,7 @@ class AIAgent:
 {{"steps": [{{"step": 1, "tool": "example_tool", "reason": "要求された情報を取得するため"}}]}}
 
 複数ツール必要:
-{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
+{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
 
 ツール不要:
 {{"steps": []}}
