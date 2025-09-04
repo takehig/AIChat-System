@@ -627,6 +627,28 @@
                 </div>
             `;
             
+            // 戦略立案LLM情報
+            if (strategy.strategy_llm_prompt) {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-success">🧠 戦略立案LLM</h6>
+                        <div class="border border-success rounded p-2">
+                            <div class="mb-2">
+                                <strong>実行時間:</strong> ${Math.round(strategy.strategy_llm_execution_time_ms || 0)}ms
+                            </div>
+                            <div class="mb-2">
+                                <strong>プロンプト:</strong>
+                                <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.strategy_llm_prompt}</pre>
+                            </div>
+                            <div class="mb-2">
+                                <strong>応答:</strong>
+                                <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.strategy_llm_response}</pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             // 各ステップの詳細デバッグ情報を表示
             strategy.steps.forEach((step, index) => {
                 debugHtml += `
@@ -642,13 +664,35 @@
                             ${step.debug_info ? `
                                 <div class="mb-2">
                                     <strong>デバッグ情報:</strong>
-                                    <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(step.debug_info, null, 2)}</pre>
+                                    <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(step.debug_info, null, 2)}</pre>
                                 </div>
                             ` : ''}
                         </div>
                     </div>
                 `;
             });
+            
+            // 最終応答LLM情報
+            if (strategy.final_llm_prompt) {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-warning">🎨 最終応答LLM</h6>
+                        <div class="border border-warning rounded p-2">
+                            <div class="mb-2">
+                                <strong>実行時間:</strong> ${Math.round(strategy.final_llm_execution_time_ms || 0)}ms
+                            </div>
+                            <div class="mb-2">
+                                <strong>プロンプト:</strong>
+                                <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.final_llm_prompt}</pre>
+                            </div>
+                            <div class="mb-2">
+                                <strong>応答:</strong>
+                                <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.final_llm_response}</pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
             
             debugPanel.innerHTML = debugHtml;
         }

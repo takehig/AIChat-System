@@ -23,17 +23,6 @@ class Intent:
             self.requires_tools = []
 
 @dataclass
-class ExecutionTrace:
-    timestamp: str
-    step_type: str  # "strategy_planning", "tool_execution", "llm_interaction"
-    step_name: str
-    llm_prompt: Optional[str] = None
-    llm_response: Optional[str] = None
-    input_data: Optional[Dict] = None
-    output_data: Optional[Dict] = None
-    execution_time_ms: Optional[float] = None
-
-@dataclass
 class DetailedStep:
     step: int
     tool: str
@@ -44,10 +33,25 @@ class DetailedStep:
     output: Optional[Dict] = None
     execution_time_ms: Optional[float] = None
     debug_info: Optional[Dict] = None
+    
+    # LLM情報（統合）
+    llm_prompt: Optional[str] = None
+    llm_response: Optional[str] = None
+    llm_execution_time_ms: Optional[float] = None
 
 @dataclass
 class DetailedStrategy:
     steps: List[DetailedStep]
+    
+    # 戦略立案LLM情報
+    strategy_llm_prompt: Optional[str] = None
+    strategy_llm_response: Optional[str] = None
+    strategy_llm_execution_time_ms: Optional[float] = None
+    
+    # 最終応答LLM情報
+    final_llm_prompt: Optional[str] = None
+    final_llm_response: Optional[str] = None
+    final_llm_execution_time_ms: Optional[float] = None
     
     def is_executed(self) -> bool:
         """実行済みかどうか判定"""
@@ -75,30 +79,6 @@ class DetailedStrategy:
         ) for step in data["steps"]]
         return cls(steps=steps)
 
-class DebugCollector:
-    def __init__(self):
-        self.traces: List[ExecutionTrace] = []
-    
-    def add_llm_trace(self, step_name: str, prompt: str, response: str, execution_time: float):
-        self.traces.append(ExecutionTrace(
-            timestamp=datetime.now().isoformat(),
-            step_type="llm_interaction",
-            step_name=step_name,
-            llm_prompt=prompt,
-            llm_response=response,
-            execution_time_ms=execution_time
-        ))
-    
-    def add_tool_trace(self, step_name: str, input_data: Dict, output_data: Dict, execution_time: float):
-        self.traces.append(ExecutionTrace(
-            timestamp=datetime.now().isoformat(),
-            step_type="tool_execution", 
-            step_name=step_name,
-            input_data=input_data,
-            output_data=output_data,
-            execution_time_ms=execution_time
-        ))
-
 class AIAgent:
     def __init__(self):
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
@@ -115,42 +95,9 @@ class AIAgent:
         self.available_tools = {}  # ツール名 -> ツール情報
         self.enabled_tools = set()  # 有効ツール一覧
         
-        # デバッグ収集器
-        self.debug_collector = None
+        # デバッグ収集器（削除）
     
     async def call_claude_with_trace(self, system_prompt: str, user_message: str, step_name: str) -> str:
-        """LLM呼び出しをトレース付きで実行"""
-        start_time = time.time()
-        
-        # 完全なプロンプトを記録
-        full_prompt = f"System: {system_prompt}\n\nUser: {user_message}"
-        
-        try:
-            response = await self.call_claude(system_prompt, user_message)
-            execution_time = (time.time() - start_time) * 1000
-            
-            # トレース記録
-            if self.debug_collector:
-                self.debug_collector.add_llm_trace(
-                    step_name=step_name,
-                    prompt=full_prompt,
-                    response=response,
-                    execution_time=execution_time
-                )
-            
-            return response
-        except Exception as e:
-            execution_time = (time.time() - start_time) * 1000
-            error_response = f"ERROR: {str(e)}"
-            
-            if self.debug_collector:
-                self.debug_collector.add_llm_trace(
-                    step_name=step_name,
-                    prompt=full_prompt,
-                    response=error_response,
-                    execution_time=execution_time
-                )
-            raise
     
     async def initialize(self):
         """AI Agent初期化"""
@@ -225,9 +172,6 @@ class AIAgent:
     async def process_message(self, user_message: str) -> Dict[str, Any]:
         """メッセージ処理（詳細戦略立案・決定論的実行）"""
         try:
-            # デバッグ収集器初期化
-            self.debug_collector = DebugCollector()
-            
             # MCP利用可能時は詳細戦略立案
             if self.mcp_available:
                 # 詳細戦略立案
@@ -374,13 +318,18 @@ class AIAgent:
 
 ツールが不要な一般的質問・挨拶の場合は必ず steps: [] を返してください。"""
 
-        response = await self.call_claude_with_trace(
+        response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(
             system_prompt=strategy_prompt,
-            user_message=user_message,
-            step_name="詳細戦略立案"
+            user_message=user_message
         )
         
-        return DetailedStrategy.from_json(response)
+        strategy = DetailedStrategy.from_json(response)
+        # 戦略立案LLM情報を記録
+        strategy.strategy_llm_prompt = prompt
+        strategy.strategy_llm_response = llm_response
+        strategy.strategy_llm_execution_time_ms = execution_time
+        
+        return strategy
     
     async def format_tool_result(self, user_message: str, tool_name: str, tool_result: Dict[str, Any]) -> str:
         """ツール結果整形"""
@@ -526,4 +475,11 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
 - 過度に営業的にならず、事実ベースで回答
 - 実行時間: {sum(s.execution_time_ms or 0 for s in executed_strategy.steps)}ms"""
 
-        return await self.call_claude(system_prompt, "上記を基に回答してください。")
+        response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(system_prompt, "上記を基に回答してください。")
+        
+        # 最終応答LLM情報を記録
+        executed_strategy.final_llm_prompt = prompt
+        executed_strategy.final_llm_response = llm_response
+        executed_strategy.final_llm_execution_time_ms = execution_time
+        
+        return response
