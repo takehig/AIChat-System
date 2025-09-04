@@ -302,35 +302,18 @@
                         </div>
                     </div>
                     
-                    <!-- Strategy Panel -->
-                    <div class="col-md-3 col-lg-3 mb-3">
+                    <!-- Strategy & Debug Panel (Merged) -->
+                    <div class="col-md-6 col-lg-6 mb-3">
                         <div class="card shadow-lg border-0 h-100">
                             <div class="card-header bg-transparent border-0">
                                 <h5 class="card-title mb-0">
                                     <i class="fas fa-chess me-2"></i>
-                                    実行戦略
-                                </h5>
-                            </div>
-                            <div class="card-body p-3" style="overflow-y: auto;">
-                                <div id="strategyPanel" class="small">
-                                    <div class="text-muted">戦略立案時に表示されます</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Debug Panel -->
-                    <div class="col-md-3 col-lg-3">
-                        <div class="card shadow-lg border-0 h-100">
-                            <div class="card-header bg-transparent border-0">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-bug me-2"></i>
-                                    デバッグ情報
+                                    実行戦略・デバッグ情報
                                 </h5>
                             </div>
                             <div class="card-body p-3" style="overflow-y: auto;">
                                 <div id="debugPanel" class="small">
-                                    <div class="text-muted">ツール実行時にデバッグ情報が表示されます</div>
+                                    <div class="text-muted">戦略立案・ツール実行時に詳細情報が表示されます</div>
                                 </div>
                             </div>
                         </div>
@@ -809,14 +792,12 @@
                 // API応答をコンソールに出力（新デバッグシステム対応）
                 console.log("[CHAT DEBUG] API応答受信:", data);
                 
-                // 新デバッグ情報を画面に表示
+                // 統合デバッグ情報を画面に表示
                 if (data.strategy) {
                     console.log("[DEBUG] 新デバッグシステム検出:", data.strategy);
-                    displayStrategy(data.strategy);
                     displayEnhancedDebugInfo(data.strategy);
                 } else {
                     console.log("[DEBUG] No strategy info available");
-                    displayStrategy(null);
                     displayEnhancedDebugInfo(null);
                 }
                 
@@ -949,56 +930,6 @@
             }
         });
 
-        function displayStrategy(strategy) {
-            const strategyPanel = document.getElementById('strategyPanel');
-            if (!strategy || !strategy.steps) {
-                strategyPanel.innerHTML = '<div class="text-muted">戦略情報なし</div>';
-                return;
-            }
-            
-            let strategyHtml = `
-                <div class="mb-3">
-                    <h6 class="fw-bold text-info">🎯 戦略概要</h6>
-                    <div class="small text-muted">
-                        <strong>総実行時間:</strong> ${strategy.total_execution_time_ms || 0}ms<br>
-                        <strong>実行状態:</strong> ${strategy.is_executed ? '完了' : '未完了'}
-                    </div>
-                </div>
-            `;
-            
-            if (strategy.steps && strategy.steps.length > 0) {
-                strategyHtml += `
-                    <div class="mb-3">
-                        <h6 class="fw-bold text-success">📋 実行ステップ</h6>
-                        <ol class="small mb-0">
-                `;
-                
-                strategy.steps.forEach((step, index) => {
-                    const statusIcon = step.output ? '✅' : '⏳';
-                    const executionTime = step.execution_time_ms ? `(${Math.round(step.execution_time_ms)}ms)` : '';
-                    
-                    strategyHtml += `
-                        <li class="mb-2">
-                            <div class="d-flex align-items-center">
-                                <span class="me-2">${statusIcon}</span>
-                                <strong>${step.tool}</strong>
-                                <small class="text-muted ms-auto">${executionTime}</small>
-                            </div>
-                            <div class="text-muted small">
-                                ${step.reason}
-                            </div>
-                        </li>
-                    `;
-                });
-                
-                strategyHtml += `
-                        </ol>
-                    </div>
-                `;
-            }
-            
-            strategyPanel.innerHTML = strategyHtml;
-        }
     </script>
 </body>
 </html>
