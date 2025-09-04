@@ -661,6 +661,18 @@
                             <div class="mb-2">
                                 <strong>実行時間:</strong> ${step.execution_time_ms ? Math.round(step.execution_time_ms) + 'ms' : 'N/A'}
                             </div>
+                            ${step.input ? `
+                                <div class="mb-2">
+                                    <strong>ツール入力:</strong>
+                                    <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${step.input}</pre>
+                                </div>
+                            ` : ''}
+                            ${step.output && step.output.result ? `
+                                <div class="mb-2">
+                                    <strong>ツール結果:</strong>
+                                    <pre class="bg-success bg-opacity-10 p-2 small mt-1 border border-success rounded" style="max-height: 300px; overflow-y: auto;">${JSON.stringify(step.output.result, null, 2)}</pre>
+                                </div>
+                            ` : ''}
                             ${step.debug_info ? `
                                 <div class="mb-2">
                                     <strong>デバッグ情報:</strong>
