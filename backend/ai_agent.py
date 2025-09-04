@@ -57,6 +57,14 @@ class DetailedStrategy:
         """最終出力取得"""
         return self.steps[-1].output if self.steps and self.steps[-1].output else None
     
+    def to_dict(self) -> Dict[str, Any]:
+        """辞書形式に変換（JSON serialization用）"""
+        return {
+            "steps": [step.__dict__ for step in self.steps],
+            "is_executed": self.is_executed(),
+            "total_execution_time_ms": sum(s.execution_time_ms or 0 for s in self.steps)
+        }
+    
     @classmethod
     def from_json(cls, json_str: str) -> 'DetailedStrategy':
         data = json.loads(json_str)
@@ -240,18 +248,8 @@ class AIAgent:
                 
                 return {
                     "message": response,
-                    "tools_used": [step.tool for step in executed_strategy.steps if step.output],
-                    "mcp_enabled": True,
-                    "debug_info": {
-                        "strategy": {
-                            "steps": [{"step": s.step, "tool": s.tool, "reason": s.reason} for s in executed_strategy.steps]
-                        },
-                        "execution": {
-                            "steps": [{"step": s.step, "tool": s.tool, "input": s.input, "output": s.output, "execution_time_ms": s.execution_time_ms} for s in executed_strategy.steps],
-                            "total_execution_time_ms": sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
-                        },
-                        "debug_traces": []  # デバッグトレースは新設計では不要
-                    }
+                    "strategy": executed_strategy,  # 全情報が含まれたオブジェクト
+                    "mcp_enabled": True
                 }
             
             # 通常のAI応答

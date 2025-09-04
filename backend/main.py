@@ -36,10 +36,9 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     timestamp: str
-    tools_used: List[str] = []
+    strategy: Optional[Dict[str, Any]] = None  # DetailedStrategyオブジェクト
     mcp_enabled: bool = False
     error: Optional[str] = None
-    debug_info: Optional[Dict[str, Any]] = None
 
 class SystemStatus(BaseModel):
     status: str
@@ -76,18 +75,17 @@ async def chat(request: ChatRequest):
         # AI Agentでメッセージ処理
         result = await ai_agent.process_message(request.message)
         
-        # debug_info確認ログ
-        debug_info = result.get("debug_info")
-        logger.info(f"[DEBUG] Final debug_info in main.py: {debug_info}")
+        # strategy確認ログ
+        strategy = result.get("strategy")
+        logger.info(f"[DEBUG] Strategy object in main.py: {strategy is not None}")
         logger.info(f"[DEBUG] Full result keys: {list(result.keys())}")
         
         return ChatResponse(
             message=result["message"],
             timestamp=datetime.now().isoformat(),
-            tools_used=result.get("tools_used", []),
+            strategy=strategy.to_dict() if strategy else None,  # to_dict()メソッド使用
             mcp_enabled=result.get("mcp_enabled", False),
-            error=result.get("error"),
-            debug_info=debug_info
+            error=result.get("error")
         )
         
     except Exception as e:
