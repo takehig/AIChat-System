@@ -83,7 +83,7 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             message=result["message"],
             timestamp=datetime.now().isoformat(),
-            strategy=strategy,  # オブジェクト直接渡し（FastAPIが自動シリアライズ）
+            strategy=strategy.to_dict() if strategy else None,  # to_dict()を明示的に使用
             mcp_enabled=result.get("mcp_enabled", False),
             error=result.get("error")
         )
