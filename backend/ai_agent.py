@@ -37,22 +37,35 @@ class ExecutionTrace:
 class DetailedStep:
     step: int
     tool: str
+    reason: str
+    
+    # 実行時に追加される情報（初期値None）
+    input: Optional[str] = None
+    output: Optional[Dict] = None
+    execution_time_ms: Optional[float] = None
+    debug_info: Optional[Dict] = None
 
 @dataclass
 class DetailedStrategy:
-    reasoning: str
     steps: List[DetailedStep]
-    data_flow: str
+    
+    def is_executed(self) -> bool:
+        """実行済みかどうか判定"""
+        return all(step.output is not None for step in self.steps)
+    
+    def get_final_output(self) -> Optional[Dict]:
+        """最終出力取得"""
+        return self.steps[-1].output if self.steps and self.steps[-1].output else None
     
     @classmethod
     def from_json(cls, json_str: str) -> 'DetailedStrategy':
         data = json.loads(json_str)
-        steps = [DetailedStep(**step) for step in data["steps"]]
-        return cls(
-            reasoning=data["reasoning"],
-            steps=steps,
-            data_flow=data["data_flow"]
-        )
+        steps = [DetailedStep(
+            step=step["step"],
+            tool=step["tool"], 
+            reason=step["reason"]
+        ) for step in data["steps"]]
+        return cls(steps=steps)
 
 class DebugCollector:
     def __init__(self):
@@ -217,24 +230,25 @@ class AIAgent:
                 print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
                 
                 # 決定論的実行
-                execution_result = await self.execute_detailed_strategy(strategy, user_message)
+                executed_strategy = await self.execute_detailed_strategy(strategy, user_message)
                 
                 # 動的システムプロンプトで応答生成
                 response = await self.generate_contextual_response_with_strategy(
-                    user_message, execution_result
+                    user_message, executed_strategy
                 )
                 
                 return {
                     "message": response,
-                    "tools_used": [r["tool"] for r in execution_result["results"]],
+                    "tools_used": [step.tool for step in executed_strategy.steps if step.output],
                     "mcp_enabled": True,
                     "debug_info": {
                         "strategy": {
-                            "reasoning": strategy.reasoning,
-                            "steps": [step.__dict__ for step in strategy.steps],
-                            "data_flow": strategy.data_flow
+                            "steps": [{"step": s.step, "tool": s.tool, "reason": s.reason} for s in executed_strategy.steps]
                         },
-                        "execution": execution_result,
+                        "execution": {
+                            "steps": [{"step": s.step, "tool": s.tool, "input": s.input, "output": s.output, "execution_time_ms": s.execution_time_ms} for s in executed_strategy.steps],
+                            "total_execution_time_ms": sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
+                        },
                         "debug_traces": execution_result["debug_traces"]
                     }
                 }
@@ -334,36 +348,30 @@ class AIAgent:
         enabled_tools = self.get_enabled_tools()
         
         if not enabled_tools:
+        if not enabled_tools:
             # ツールが無い場合は空の戦略を返す
-            return DetailedStrategy(
-                reasoning="利用可能なツールがないため、通常のAI応答を実行",
-                steps=[],
-                data_flow="ツール実行なし"
-            )
+            return DetailedStrategy(steps=[])
         
         tools_description = "\n".join([
             f"- {name}: {info['usage_context']}"
             for name, info in enabled_tools.items()
         ])
         
-        strategy_prompt = f"""ユーザーリクエストを分析し、必要なツールの実行順序のみを決定してください。
+        strategy_prompt = f"""ユーザーリクエストを分析し、必要なツールの実行順序を決定してください。
 
 利用可能ツール:
 {tools_description}
 
 重要な判定ルール:
 1. ツールが不要な場合は steps を空配列 [] にする
-2. 必要な場合のみツール名と実行順序を指定
-3. 複雑な属性は不要、シンプルな順序のみ
+2. 必要な場合のみツール名と実行順序と理由を指定
 
 以下のJSON形式で回答:
 {{
-    "reasoning": "ツール使用判定の理由（簡潔に）",
     "steps": [
-        {{"step": 1, "tool": "ツール名"}},
-        {{"step": 2, "tool": "ツール名"}}
-    ],
-    "data_flow": "実行フローの概要（簡潔に）"
+        {{"step": 1, "tool": "ツール名", "reason": "このツールを使う理由"}},
+        {{"step": 2, "tool": "ツール名", "reason": "このツールを使う理由"}}
+    ]
 }}
 
 ツールが不要な一般的質問・挨拶の場合は必ず steps: [] を返してください。"""
@@ -439,84 +447,36 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
             logger.error(f"Claude API error: {e}")
             raise
     
-    async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> Dict[str, Any]:
-        """戦略に基づく決定論的実行"""
-        execution_context = {"user_input": user_message}
-        results = []
+    async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> DetailedStrategy:
+        """戦略に基づく決定論的実行 - 同じオブジェクトに実行結果を埋め込み"""
+        current_input = user_message
         
         for step in strategy.steps:
             step_start_time = time.time()
             
-            # 入力準備（決定論的、LLM不使用）
-            tool_input = self.prepare_tool_input(step, execution_context)
-            
             # ツール直接実行
-            result = await self.execute_tool_directly(step.tool, tool_input)
+            result = await self.execute_tool_directly(step.tool, current_input)
             
-            step_execution_time = (time.time() - step_start_time) * 1000
+            # 同じオブジェクトに実行結果を追加
+            step.input = current_input
+            step.output = result
+            step.execution_time_ms = (time.time() - step_start_time) * 1000
+            step.debug_info = result.get("debug_info", {}) if isinstance(result, dict) else {}
             
-            # 結果を次ステップ用に保存
-            execution_context[f"step_{step.step}_result"] = result
-            
-            results.append({
-                "step": step.step,
-                "tool": step.tool,
-                "input": tool_input,
-                "result": result,
-                "execution_time_ms": step_execution_time
-            })
+            # 次ステップ用（debug_info除外）
+            clean_result = {k: v for k, v in result.items() if k != "debug_info"} if isinstance(result, dict) else result
+            current_input = json.dumps(clean_result, ensure_ascii=False)
             
             # ツール実行トレース
             if self.debug_collector:
                 self.debug_collector.add_tool_trace(
                     step_name=f"Step_{step.step}_{step.tool}",
-                    input_data={"tool_input": tool_input, "step_info": step.__dict__},
+                    input_data={"tool_input": step.input, "step_info": {"step": step.step, "tool": step.tool, "reason": step.reason}},
                     output_data=result,
-                    execution_time=step_execution_time
+                    execution_time=step.execution_time_ms
                 )
         
-        return {
-            "strategy": strategy,
-            "results": results,
-            "debug_traces": self.debug_collector.traces if self.debug_collector else [],
-            "total_execution_time_ms": sum(r["execution_time_ms"] for r in results)
-        }
-    
-    def prepare_tool_input(self, step: DetailedStep, context: Dict) -> str:
-        """入力準備（決定論的、LLM不使用）"""
-        
-        # 最初のステップは常にユーザー入力
-        if step.step == 1:
-            return context["user_input"]
-        
-        # 2番目以降は前ステップの結果から顧客IDを抽出
-        prev_step_key = f"step_{step.step - 1}_result"
-        source_data = context.get(prev_step_key, {})
-        
-        # 顧客検索結果から顧客IDを抽出
-        if step.tool == "get_customer_holdings":
-            return self.extract_customer_ids_text(source_data)
-        
-        # デフォルトは結果全体をテキスト化
-        return json.dumps(source_data, ensure_ascii=False)
-    
-    def extract_customer_ids_text(self, data: Dict) -> str:
-        """顧客IDをテキスト形式で抽出"""
-        if isinstance(data, dict) and "data" in data:
-            customers = data["data"]
-            if isinstance(customers, list):
-                customer_ids = [str(c.get("customer_id", "")) for c in customers if c.get("customer_id")]
-                return f"顧客ID: {', '.join(customer_ids)}"
-        return "顧客IDが見つかりませんでした"
-    
-    def extract_product_codes_text(self, data: Dict) -> str:
-        """商品コードをテキスト形式で抽出"""
-        if isinstance(data, dict) and "data" in data:
-            products = data["data"]
-            if isinstance(products, list):
-                product_codes = [str(p.get("product_code", "")) for p in products if p.get("product_code")]
-                return f"商品コード: {', '.join(product_codes)}"
-        return "商品コードが見つかりませんでした"
+        return strategy  # 実行結果が埋め込まれた同じオブジェクト
     
     async def execute_tool_directly(self, tool_name: str, tool_input: str) -> Dict[str, Any]:
         """ツールを直接実行"""
@@ -539,30 +499,24 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
         except Exception as e:
             return {"error": str(e)}
     
-    async def generate_contextual_response_with_strategy(self, user_message: str, execution_result: Dict) -> str:
+    async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
         """戦略実行結果を含む動的応答生成"""
-        if not execution_result["results"]:
+        if not executed_strategy.steps or not executed_strategy.is_executed():
             return await self.call_claude(
                 "証券会社の社内情報システムとして、質問に適切に回答してください。",
                 user_message
             )
         
         # 実行結果サマリー生成
-        strategy = execution_result["strategy"]
-        results = execution_result["results"]
-        
         results_summary = "\n\n".join([
-            f"【Step {result['step']}: {result['tool']}】\n結果: {json.dumps(result['result'], ensure_ascii=False, indent=2)}"
-            for result in results
+            f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
+            for step in executed_strategy.steps if step.output
         ])
         
         # 動的システムプロンプト生成
         system_prompt = f"""証券会社の社内情報システムとして回答してください。
 
 ユーザーの質問: {user_message}
-
-実行戦略: {strategy.reasoning}
-データフロー: {strategy.data_flow}
 
 実行結果:
 {results_summary}
@@ -572,6 +526,6 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
 - 実行した処理の流れを簡潔に説明
 - 最終的な結果を分かりやすく提示
 - 過度に営業的にならず、事実ベースで回答
-- 実行時間: {execution_result.get('total_execution_time_ms', 0)}ms"""
+- 実行時間: {sum(s.execution_time_ms or 0 for s in executed_strategy.steps)}ms"""
 
         return await self.call_claude(system_prompt, "上記を基に回答してください。")
