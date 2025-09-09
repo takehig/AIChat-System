@@ -599,20 +599,11 @@
                 return;
             }
             
-            let debugHtml = `
-                <div class="mb-3">
-                    <h6 class="fw-bold text-primary">🎯 実行戦略</h6>
-                    <div class="bg-light p-2 rounded">
-                        <strong>実行状態:</strong> ${strategy.is_executed ? '完了' : '未完了'}<br>
-                        <strong>総実行時間:</strong> ${strategy.total_execution_time_ms || 0}ms<br>
-                        <strong>ステップ数:</strong> ${strategy.steps.length}<br>
-                        <small class="text-muted">Debug: is_executed=${strategy.is_executed}, total_time=${strategy.total_execution_time_ms}</small>
-                    </div>
-                </div>
-            `;
+            let debugHtml = '';
             
-            // 戦略立案LLM情報
+            // 戦略立案LLM情報（必須）
             if (strategy.strategy_llm_prompt) {
+                // 正常系: 戦略立案LLM情報表示
                 debugHtml += `
                     <div class="mb-3">
                         <h6 class="fw-bold text-success">🧠 戦略立案LLM</h6>
@@ -628,6 +619,30 @@
                                 <strong>応答:</strong>
                                 <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.strategy_llm_response}</pre>
                             </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // 異常系: 戦略立案情報が存在しない
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-danger">⚠️ 戦略立案情報エラー</h6>
+                        <div class="alert alert-danger">
+                            戦略立案LLM情報が取得できませんでした。<br>
+                            バックエンドの処理を確認してください。
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ツール実行情報（ツールがある場合のみ）
+            if (strategy.steps && strategy.steps.length > 0) {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-primary">🔧 ツール実行</h6>
+                        <div class="bg-light p-2 rounded">
+                            <strong>実行ステップ数:</strong> ${strategy.steps.length}<br>
+                            <strong>総実行時間:</strong> ${strategy.total_execution_time_ms || 0}ms
                         </div>
                     </div>
                 `;
