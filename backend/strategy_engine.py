@@ -102,9 +102,9 @@ class StrategyEngine:
     
     async def call_claude(self, system_prompt: str, user_message: str) -> str:
         """Claude API呼び出し - LLM情報記録版を使用"""
-        response, _, _, _ = await self.call_claude_with_llm_info(system_prompt, user_message)
-        return response
-            
+        try:
+            response, _, _, _ = await self.call_claude_with_llm_info(system_prompt, user_message)
+            return response
         except Exception as e:
             logger.error(f"Claude API call failed: {e}")
             return f"申し訳ございません。AI応答の生成中にエラーが発生しました: {str(e)}"
