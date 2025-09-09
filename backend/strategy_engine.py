@@ -70,10 +70,16 @@ class StrategyEngine:
     
     def get_enabled_tools(self):
         """有効なツールのみ返す"""
-        return {
+        logger.info(f"[DEBUG] available_tools keys: {list(self.available_tools.keys())}")
+        logger.info(f"[DEBUG] enabled_tools: {list(self.enabled_tools)}")
+        
+        result = {
             name: info for name, info in self.available_tools.items()
             if name in self.enabled_tools
         }
+        
+        logger.info(f"[DEBUG] get_enabled_tools result: {list(result.keys())}")
+        return result
     
     # === 将来拡張用メソッド（空実装） ===
     async def learn_from_feedback(self, query: str, strategy: DetailedStrategy, success: bool):
