@@ -75,6 +75,25 @@ class DetailedStrategy:
                 parse_error_message=str(e), 
                 raw_response=json_str
             )
+    
+    def to_dict(self) -> dict:
+        """DetailedStrategyを辞書形式に変換"""
+        return {
+            "steps": [
+                {
+                    "step": step.step,
+                    "tool": step.tool,
+                    "reason": step.reason
+                }
+                for step in self.steps
+            ],
+            "strategy_llm_prompt": self.strategy_llm_prompt,
+            "strategy_llm_response": self.strategy_llm_response,
+            "strategy_llm_execution_time_ms": self.strategy_llm_execution_time_ms,
+            "parse_error": self.parse_error,
+            "parse_error_message": self.parse_error_message,
+            "raw_response": self.raw_response
+        }
 
 # === FastAPI用データモデル ===
 class ChatRequest(BaseModel):
