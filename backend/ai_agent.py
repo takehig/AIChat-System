@@ -220,8 +220,8 @@ class AIAgent:
         try:
             # MCP利用可能時は詳細戦略立案
             if self.mcp_available:
-                # 詳細戦略立案
-                strategy = await self.plan_detailed_strategy(user_message)
+                # 戦略立案（直接 strategy_engine 呼び出し）
+                strategy = await self.strategy_engine.plan_strategy(user_message)
                 
                 print(f"[AI_AGENT] === DETAILED STRATEGY PLANNING ===")
                 print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
@@ -331,10 +331,6 @@ class AIAgent:
 {f'- 失敗したツールがある場合は、その旨を説明' if tools_failed else ''}"""
 
         return await self.call_claude(system_prompt, "上記を基に回答してください。")
-    
-    async def plan_detailed_strategy(self, user_message: str) -> DetailedStrategy:
-        """詳細な実行戦略を立案 - strategy_engine に統合"""
-        return await self.strategy_engine.plan_strategy(user_message)
     
     async def format_tool_result(self, user_message: str, tool_name: str, tool_result: Dict[str, Any]) -> str:
         """ツール結果整形"""
