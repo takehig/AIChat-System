@@ -29,12 +29,6 @@ class ConversationManager:
         except Exception as e:
             logger.error(f"Failed to save conversations: {e}")
     
-    def get_session_id(self, request_data: Dict) -> str:
-        """セッションIDを生成（IPアドレス + 日付ベース）"""
-        # 簡易的なセッション識別
-        today = datetime.now().strftime("%Y-%m-%d")
-        return f"session_{today}"
-    
     def add_message(self, session_id: str, user_message: str, ai_response: str, strategy_info: Dict = None):
         """会話履歴に追加"""
         if session_id not in self.conversations:

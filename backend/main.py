@@ -35,7 +35,7 @@ ai_agent: Optional[AIAgent] = None
 # データモデル
 class ChatRequest(BaseModel):
     message: str
-    conversation_id: Optional[str] = "default"
+    conversation_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     message: str
@@ -74,8 +74,9 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=503, detail="AI Agent not initialized")
     
     try:
-        # セッションID取得
-        session_id = conversation_manager.get_session_id({})
+        # フロントエンドからのセッションIDを優先使用
+        session_id = request.conversation_id or str(uuid.uuid4())
+        logger.info(f"Using session_id: {session_id}")
         
         # 前回の会話履歴を取得
         conversation_context = conversation_manager.get_conversation_context(session_id)
@@ -131,12 +132,12 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/clear-conversation")
-async def clear_conversation():
+async def clear_conversation(request: ChatRequest):
     """会話履歴をクリア"""
     try:
-        session_id = conversation_manager.get_session_id({})
+        session_id = request.conversation_id or "default"
         conversation_manager.clear_session(session_id)
-        return {"status": "success", "message": "会話履歴をクリアしました"}
+        return {"status": "success", "message": f"会話履歴をクリアしました (session: {session_id})"}
     except Exception as e:
         logger.error(f"Clear conversation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
