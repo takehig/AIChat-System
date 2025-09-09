@@ -39,44 +39,23 @@ class StrategyEngine:
             for name, info in enabled_tools.items()
         ])
         
-        # SystemPrompt Management からプロンプトを動的取得
-        base_prompt = self.prompt_client.get_prompt("strategy_planning")
-        
-        strategy_prompt = f"""{base_prompt}
-
-利用可能ツール:
+        # 動的部分を先頭に配置
+        dynamic_context = f"""利用可能ツール:
 {tools_description}
 
-## 出力形式（必須）
-以下の形式の純粋なJSONのみを返してください。説明文・前置き・後置きは一切不要です。
+ユーザーリクエスト: {user_message}
 
-{{
-    "steps": [
-        {{"step": 1, "tool": "ツール名", "reason": "このツールを使う理由"}}
-    ]
-}}
-
-## 出力例（架空のツール使用）
-情報取得が必要:
-{{"steps": [{{"step": 1, "tool": "example_tool", "reason": "要求された情報を取得するため"}}]}}
-
-複数ツール必要:
-{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
-
-ツール不要:
-{{"steps": []}}
-
-## 禁止事項
-- 明示的に要求されていない情報の取得禁止
-- 利用可能ツール以外の使用禁止
-- JSON以外のテキスト出力禁止
-- 説明文・コメント・前置き禁止
-
-利用可能ツールの中から、ユーザーが明示的に要求した情報のみを取得する最小限のツール選択をしてください。"""
+---"""
+        
+        # SystemPrompt Management からベースプロンプトを取得
+        base_prompt = self.prompt_client.get_prompt("strategy_planning")
+        
+        # 動的コンテキスト + ベースプロンプトで完全なプロンプト構成
+        strategy_prompt = f"{dynamic_context}\n\n{base_prompt}"
 
         response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
             system_prompt=strategy_prompt,
-            user_message=user_message
+            user_message="上記の利用可能ツールとユーザーリクエストを分析し、適切な戦略をJSON形式で出力してください。"
         )
         
         strategy = DetailedStrategy.from_json_string(response)
