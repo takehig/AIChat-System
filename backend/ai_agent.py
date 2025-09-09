@@ -131,7 +131,7 @@ class AIAgent:
         self.llm_util = LLMUtil(self.bedrock_client, self.model_id)
         
         # エンジン統合
-        self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools, self.llm_util)
+        self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools, self.llm_util, self.enabled_tools)
         self.integration_engine = IntegrationEngine(self.bedrock_client, self.llm_util)
         self.mcp_executor = MCPExecutor()
     
