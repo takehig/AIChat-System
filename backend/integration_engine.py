@@ -10,9 +10,10 @@ logger = logging.getLogger(__name__)
 class IntegrationEngine:
     """回答統合専用エンジン - 将来大幅拡張予定"""
     
-    def __init__(self, bedrock_client):
+    def __init__(self, bedrock_client, llm_util):
         self.bedrock_client = bedrock_client
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
+        self.llm_util = llm_util
         
         # === 将来拡張用（現在は空実装） ===
         self.context_templates = {}      # コンテキストテンプレート
@@ -50,7 +51,7 @@ class IntegrationEngine:
 - 過度に営業的にならず、事実ベースで回答
 - 実行時間: {sum(s.execution_time_ms or 0 for s in executed_strategy.steps)}ms"""
 
-        response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(
+        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
             system_prompt, "上記を基に回答してください。"
         )
         
@@ -77,46 +78,6 @@ class IntegrationEngine:
             logger.error(f"AI response error: {e}")
             return "申し訳ございません。回答の生成中にエラーが発生しました。"
     
-    async def call_claude_with_llm_info(self, system_prompt: str, user_message: str) -> tuple[str, str, str, float]:
-        """LLM呼び出し（プロンプト・応答・実行時間を返却）"""
-        start_time = time.time()
-        full_prompt = f"System: {system_prompt}\\n\\nUser: {user_message}"
-        
-        try:
-            response = await self.call_claude(system_prompt, user_message)
-            execution_time = (time.time() - start_time) * 1000
-            return response, full_prompt, response, execution_time
-        except Exception as e:
-            execution_time = (time.time() - start_time) * 1000
-            error_response = f"ERROR: {str(e)}"
-            return error_response, full_prompt, error_response, execution_time
-    
-    async def call_claude(self, system_prompt: str, user_message: str) -> str:
-        """Claude API呼び出し"""
-        try:
-            messages = [{"role": "user", "content": user_message}]
-            
-            body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2000,
-                "system": system_prompt,
-                "messages": messages,
-                "temperature": 0.1
-            }
-            
-            response = self.bedrock_client.invoke_model(
-                modelId=self.model_id,
-                body=json.dumps(body)
-            )
-            
-            response_body = json.loads(response['body'].read())
-            return response_body['content'][0]['text']
-            
-        except Exception as e:
-            logger.error(f"Claude API call failed: {e}")
-            return f"申し訳ございません。AI応答の生成中にエラーが発生しました: {str(e)}"
-    
-    def is_executed(self, strategy: DetailedStrategy) -> bool:
         """戦略が実行済みかチェック"""
         return any(step.output is not None for step in strategy.steps)
     

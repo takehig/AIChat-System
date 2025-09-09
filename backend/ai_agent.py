@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from mcp_client import MCPClient
+from llm_util import LLMUtil
 from strategy_engine import StrategyEngine
 from integration_engine import IntegrationEngine
 from mcp_executor import MCPExecutor
@@ -126,24 +127,13 @@ class AIAgent:
         self.available_tools = {}  # ツール名 -> ツール情報
         self.enabled_tools = set()  # 有効ツール一覧
         
-        # エンジン統合
-        self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools)
-        self.integration_engine = IntegrationEngine(self.bedrock_client)
-        self.mcp_executor = MCPExecutor()
-    
-    async def call_claude_with_llm_info(self, system_prompt: str, user_message: str) -> tuple[str, str, str, float]:
-        """LLM呼び出し（プロンプト・応答・実行時間を返却）"""
-        start_time = time.time()
-        full_prompt = f"System: {system_prompt}\n\nUser: {user_message}"
+        # LLMユーティリティ初期化
+        self.llm_util = LLMUtil(self.bedrock_client, self.model_id)
         
-        try:
-            response = await self.call_claude(system_prompt, user_message)
-            execution_time = (time.time() - start_time) * 1000
-            return response, full_prompt, response, execution_time
-        except Exception as e:
-            execution_time = (time.time() - start_time) * 1000
-            error_response = f"ERROR: {str(e)}"
-            return error_response, full_prompt, error_response, execution_time
+        # エンジン統合
+        self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools, self.llm_util)
+        self.integration_engine = IntegrationEngine(self.bedrock_client, self.llm_util)
+        self.mcp_executor = MCPExecutor()
     
     async def initialize(self):
         """AI Agent初期化"""
@@ -464,7 +454,7 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
 - 過度に営業的にならず、事実ベースで回答
 - 実行時間: {sum(s.execution_time_ms or 0 for s in executed_strategy.steps)}ms"""
 
-        response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(system_prompt, "上記を基に回答してください。")
+        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(system_prompt, "上記を基に回答してください。")
         
         # 最終応答LLM情報を記録
         executed_strategy.final_llm_prompt = prompt
