@@ -28,20 +28,21 @@ class StrategyEngine:
         
     async def plan_strategy(self, user_message: str) -> DetailedStrategy:
         """戦略立案メイン処理"""
+        logger.info(f"[DEBUG] plan_strategy開始")
         enabled_tools = self.get_enabled_tools()
+        logger.info(f"[DEBUG] enabled_tools取得: {len(enabled_tools)}個")
+        logger.info(f"[DEBUG] enabled_tools: {list(enabled_tools.keys()) if enabled_tools else 'None'}")
         
-        if not enabled_tools:
-            # ツールが無い場合は空の戦略を返す
-            return DetailedStrategy(steps=[])
+        logger.info(f"[DEBUG] 戦略立案処理継続 - ツール有無に関わらず実行")
         
         # SystemPrompt Management からベースプロンプトを取得
         base_prompt = self.prompt_client.get_prompt("strategy_planning")
         
-        # ツール説明文を生成
+        # ツール説明文を生成（ツールがない場合は明示）
         tools_description = "\n".join([
             f"- {name}: {info['usage_context']}"
             for name, info in enabled_tools.items()
-        ])
+        ]) if enabled_tools else "(利用可能なツールはありません)"
         
         # 完全なシステムプロンプト構築
         complete_system_prompt = f"""{base_prompt}
