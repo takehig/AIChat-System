@@ -494,7 +494,9 @@
         const AICHAT_VERSION = '2.8.2';
         console.log(`AIChat System v${AICHAT_VERSION} - Loaded`);
         
-        let conversationId = 'default';
+        // 動的セッションID生成
+        let conversationId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        console.log(`[SESSION] 新しいセッションID生成: ${conversationId}`);
 
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
