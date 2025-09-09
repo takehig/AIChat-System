@@ -4,6 +4,7 @@ import time
 import logging
 from typing import Dict, Any
 from models import DetailedStrategy, DetailedStep
+from prompt_client import SystemPromptClient
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,9 @@ class StrategyEngine:
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         self.available_tools = available_tools
         self.enabled_tools = set()
+        
+        # SystemPrompt Management クライアント初期化
+        self.prompt_client = SystemPromptClient()
         
         # === 将来拡張用（現在は空実装） ===
         self.query_patterns = {}      # クエリパターン学習
@@ -34,16 +38,13 @@ class StrategyEngine:
             for name, info in enabled_tools.items()
         ])
         
-        strategy_prompt = f"""あなたは戦略立案の専門家です。ユーザーリクエストを分析し、必要最小限のツールのみを選択してください。
+        # SystemPrompt Management からプロンプトを動的取得
+        base_prompt = self.prompt_client.get_prompt("strategy_planning")
+        
+        strategy_prompt = f"""{base_prompt}
 
 利用可能ツール:
 {tools_description}
-
-## 重要な判定ルール
-1. ユーザーが明示的に要求していない情報は取得しない
-2. 利用可能ツールの中から適切なものを選択する
-3. ツールが不要な場合は steps を空配列 [] にする
-4. 複数ツールの無駄な組み合わせを避ける
 
 ## 判定の考え方
 - 情報要求の種類を特定する（商品情報、顧客情報、その他）
