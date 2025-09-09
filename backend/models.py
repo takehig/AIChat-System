@@ -100,7 +100,6 @@ class DetailedStrategy:
     def is_executed(self) -> bool:
         """全ステップが実行済みかチェック"""
         return all(hasattr(step, 'execution_time_ms') and step.execution_time_ms is not None for step in self.steps) if self.steps else False
-        }
 
 # === FastAPI用データモデル ===
 class ChatRequest(BaseModel):
