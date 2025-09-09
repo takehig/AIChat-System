@@ -129,7 +129,7 @@ class AIAgent:
         # エンジン統合
         self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools)
         self.integration_engine = IntegrationEngine(self.bedrock_client)
-        self.mcp_executor = MCPExecutor(self.mcp_clients)
+        self.mcp_executor = MCPExecutor()
     
     async def call_claude_with_llm_info(self, system_prompt: str, user_message: str) -> tuple[str, str, str, float]:
         """LLM呼び出し（プロンプト・応答・実行時間を返却）"""
