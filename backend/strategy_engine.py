@@ -34,34 +34,30 @@ class StrategyEngine:
             # ツールが無い場合は空の戦略を返す
             return DetailedStrategy(steps=[])
         
-        tools_description = "\\n".join([
+        # SystemPrompt Management からベースプロンプトを取得
+        base_prompt = self.prompt_client.get_prompt("strategy_planning")
+        
+        # ツール説明文を生成
+        tools_description = "\n".join([
             f"- {name}: {info['usage_context']}"
             for name, info in enabled_tools.items()
         ])
         
-        # 動的部分を先頭に配置
-        dynamic_context = f"""利用可能ツール:
-{tools_description}
+        # 完全なシステムプロンプト構築
+        complete_system_prompt = f"""{base_prompt}
 
-ユーザーリクエスト: {user_message}
+質問内容: {user_message}
 
----"""
+現在登録されているツールとその説明文:
+{tools_description}"""
         
-        # SystemPrompt Management からベースプロンプトを取得
-        base_prompt = self.prompt_client.get_prompt("strategy_planning")
-        
-        # 動的コンテキスト + ベースプロンプトで完全なプロンプト構成
-        strategy_prompt = f"{dynamic_context}\n\n{base_prompt}"
-
-        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
-            system_prompt=strategy_prompt,
-            user_message="上記の利用可能ツールとユーザーリクエストを分析し、適切な戦略をJSON形式で出力してください。"
-        )
+        # シンプルなLLM呼び出し
+        response, execution_time = await self.llm_util.call_llm_simple(complete_system_prompt)
         
         strategy = DetailedStrategy.from_json_string(response)
         # 戦略立案LLM情報を記録
-        strategy.strategy_llm_prompt = prompt
-        strategy.strategy_llm_response = llm_response
+        strategy.strategy_llm_prompt = complete_system_prompt
+        strategy.strategy_llm_response = response
         strategy.strategy_llm_execution_time_ms = execution_time
         
         return strategy

@@ -84,3 +84,11 @@ class LLMUtil:
         except Exception as e:
             logger.error(f"Claude API call failed: {e}")
             raise
+    
+    async def call_llm_simple(self, system_prompt: str, user_message: str = "",
+                             max_tokens: int = 4000, temperature: float = 0.1) -> Tuple[str, float]:
+        """純粋なLLM呼び出し - 実行時間付き"""
+        start_time = time.time()
+        response = await self.call_claude(system_prompt, user_message, max_tokens, temperature)
+        execution_time = (time.time() - start_time) * 1000
+        return response, execution_time
