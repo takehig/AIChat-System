@@ -6,6 +6,10 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from mcp_client import MCPClient
+from strategy_engine import StrategyEngine
+from integration_engine import IntegrationEngine
+from mcp_executor import MCPExecutor
+from models import DetailedStrategy, DetailedStep
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +126,10 @@ class AIAgent:
         self.available_tools = {}  # ツール名 -> ツール情報
         self.enabled_tools = set()  # 有効ツール一覧
         
-        # デバッグ収集器（削除）
+        # エンジン統合
+        self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools)
+        self.integration_engine = IntegrationEngine(self.bedrock_client)
+        self.mcp_executor = MCPExecutor(self.mcp_clients)
     
     async def call_claude_with_llm_info(self, system_prompt: str, user_message: str) -> tuple[str, str, str, float]:
         """LLM呼び出し（プロンプト・応答・実行時間を返却）"""
@@ -326,74 +333,8 @@ class AIAgent:
         return await self.call_claude(system_prompt, "上記を基に回答してください。")
     
     async def plan_detailed_strategy(self, user_message: str) -> DetailedStrategy:
-        """詳細な実行戦略を立案"""
-        enabled_tools = self.get_enabled_tools()
-        
-        if not enabled_tools:
-            # ツールが無い場合は空の戦略を返す
-            return DetailedStrategy(steps=[])
-        
-        tools_description = "\n".join([
-            f"- {name}: {info['usage_context']}"
-            for name, info in enabled_tools.items()
-        ])
-        
-        strategy_prompt = f"""あなたは戦略立案の専門家です。ユーザーリクエストを分析し、必要最小限のツールのみを選択してください。
-
-利用可能ツール:
-{tools_description}
-
-## 重要な判定ルール
-1. ユーザーが明示的に要求していない情報は取得しない
-2. 利用可能ツールの中から適切なものを選択する
-3. ツールが不要な場合は steps を空配列 [] にする
-4. 複数ツールの無駄な組み合わせを避ける
-
-## 判定の考え方
-- 情報要求の種類を特定する（商品情報、顧客情報、その他）
-- 利用可能ツールの説明文と照らし合わせる
-- 明示的に要求されていない情報は取得しない
-- 一般的な挨拶や質問にはツールは不要
-
-## 出力形式（必須）
-以下の形式の純粋なJSONのみを返してください。説明文・前置き・後置きは一切不要です。
-
-{{
-    "steps": [
-        {{"step": 1, "tool": "ツール名", "reason": "このツールを使う理由"}}
-    ]
-}}
-
-## 出力例（架空のツール使用）
-情報取得が必要:
-{{"steps": [{{"step": 1, "tool": "example_tool", "reason": "要求された情報を取得するため"}}]}}
-
-複数ツール必要:
-{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
-
-ツール不要:
-{{"steps": []}}
-
-## 禁止事項
-- 明示的に要求されていない情報の取得禁止
-- 利用可能ツール以外の使用禁止
-- JSON以外のテキスト出力禁止
-- 説明文・コメント・前置き禁止
-
-利用可能ツールの中から、ユーザーが明示的に要求した情報のみを取得する最小限のツール選択をしてください。"""
-
-        response, prompt, llm_response, execution_time = await self.call_claude_with_llm_info(
-            system_prompt=strategy_prompt,
-            user_message=user_message
-        )
-        
-        strategy = DetailedStrategy.from_json(response)
-        # 戦略立案LLM情報を記録
-        strategy.strategy_llm_prompt = prompt
-        strategy.strategy_llm_response = llm_response
-        strategy.strategy_llm_execution_time_ms = execution_time
-        
-        return strategy
+        """詳細な実行戦略を立案 - strategy_engine に統合"""
+        return await self.strategy_engine.plan_strategy(user_message)
     
     async def format_tool_result(self, user_message: str, tool_name: str, tool_result: Dict[str, Any]) -> str:
         """ツール結果整形"""
