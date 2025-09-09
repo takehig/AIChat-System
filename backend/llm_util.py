@@ -85,10 +85,30 @@ class LLMUtil:
             logger.error(f"Claude API call failed: {e}")
             raise
     
-    async def call_llm_simple(self, system_prompt: str, user_message: str = "",
-                             max_tokens: int = 4000, temperature: float = 0.1) -> Tuple[str, float]:
-        """純粋なLLM呼び出し - 実行時間付き"""
+    async def call_llm_simple(self, full_prompt: str, max_tokens: int = 4000, temperature: float = 0.1) -> Tuple[str, float]:
+        """純粋なLLM呼び出し - 完全なプロンプトを受け取りレスポンスを返す"""
         start_time = time.time()
-        response = await self.call_claude(system_prompt, user_message, max_tokens, temperature)
-        execution_time = (time.time() - start_time) * 1000
-        return response, execution_time
+        
+        try:
+            body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": max_tokens,
+                "system": full_prompt,
+                "messages": [{"role": "user", "content": "Please respond."}],
+                "temperature": temperature
+            }
+            
+            response = self.bedrock_client.invoke_model(
+                modelId=self.model_id,
+                body=json.dumps(body)
+            )
+            
+            response_body = json.loads(response['body'].read())
+            execution_time = (time.time() - start_time) * 1000
+            
+            return response_body['content'][0]['text'], execution_time
+            
+        except Exception as e:
+            execution_time = (time.time() - start_time) * 1000
+            logger.error(f"LLM call error: {e}")
+            raise

@@ -52,7 +52,7 @@ class StrategyEngine:
 現在登録されているツールとその説明文:
 {tools_description}"""
         
-        # シンプルなLLM呼び出し
+        # 純粋なLLM呼び出し
         logger.info(f"[DEBUG] LLM呼び出し開始 - プロンプト長: {len(complete_system_prompt)}")
         response, execution_time = await self.llm_util.call_llm_simple(complete_system_prompt)
         logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, 実行時間: {execution_time}ms")
