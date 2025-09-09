@@ -92,7 +92,14 @@ class DetailedStrategy:
             "strategy_llm_execution_time_ms": self.strategy_llm_execution_time_ms,
             "parse_error": self.parse_error,
             "parse_error_message": self.parse_error_message,
-            "raw_response": self.raw_response
+            "raw_response": self.raw_response,
+            "is_executed": self.is_executed(),
+            "total_execution_time_ms": sum(getattr(step, 'execution_time_ms', 0) or 0 for step in self.steps)
+        }
+    
+    def is_executed(self) -> bool:
+        """全ステップが実行済みかチェック"""
+        return all(hasattr(step, 'execution_time_ms') and step.execution_time_ms is not None for step in self.steps) if self.steps else False
         }
 
 # === FastAPI用データモデル ===
