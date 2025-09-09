@@ -78,7 +78,14 @@ class DetailedStrategy:
     
     def to_dict(self) -> dict:
         """DetailedStrategyを辞書形式に変換"""
-        return {
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"[DEBUG] to_dict開始 - strategy_llm_prompt存在: {self.strategy_llm_prompt is not None}")
+        if self.strategy_llm_prompt:
+            logger.info(f"[DEBUG] to_dict - strategy_llm_prompt長: {len(self.strategy_llm_prompt)}")
+        
+        result = {
             "steps": [
                 {
                     "step": step.step,
@@ -96,6 +103,9 @@ class DetailedStrategy:
             "is_executed": self.is_executed(),
             "total_execution_time_ms": sum(getattr(step, 'execution_time_ms', 0) or 0 for step in self.steps)
         }
+        
+        logger.info(f"[DEBUG] to_dict完了 - result['strategy_llm_prompt']存在: {'strategy_llm_prompt' in result and result['strategy_llm_prompt'] is not None}")
+        return result
     
     def is_executed(self) -> bool:
         """全ステップが実行済みかチェック"""

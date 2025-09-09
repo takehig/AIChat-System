@@ -52,13 +52,18 @@ class StrategyEngine:
 {tools_description}"""
         
         # シンプルなLLM呼び出し
+        logger.info(f"[DEBUG] LLM呼び出し開始 - プロンプト長: {len(complete_system_prompt)}")
         response, execution_time = await self.llm_util.call_llm_simple(complete_system_prompt)
+        logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, 実行時間: {execution_time}ms")
         
         strategy = DetailedStrategy.from_json_string(response)
+        logger.info(f"[DEBUG] DetailedStrategy作成完了 - steps数: {len(strategy.steps)}")
+        
         # 戦略立案LLM情報を記録
         strategy.strategy_llm_prompt = complete_system_prompt
         strategy.strategy_llm_response = response
         strategy.strategy_llm_execution_time_ms = execution_time
+        logger.info(f"[DEBUG] LLM情報記録完了 - prompt長: {len(complete_system_prompt)}, response長: {len(response)}")
         
         return strategy
     

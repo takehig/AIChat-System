@@ -209,7 +209,12 @@ class AIAgent:
         """メッセージ処理（常に戦略立案・決定論的実行）"""
         try:
             # 常に戦略立案実行（判断は strategy_engine に委譲）
+            logger.info(f"[DEBUG] 戦略立案開始")
             strategy = await self.strategy_engine.plan_strategy(user_message)
+            logger.info(f"[DEBUG] 戦略立案完了 - steps: {len(strategy.steps)}")
+            logger.info(f"[DEBUG] 戦略立案LLM情報確認 - prompt存在: {strategy.strategy_llm_prompt is not None}")
+            if strategy.strategy_llm_prompt:
+                logger.info(f"[DEBUG] 戦略立案LLM情報 - prompt長: {len(strategy.strategy_llm_prompt)}, response長: {len(strategy.strategy_llm_response or '')}")
             
             print(f"[AI_AGENT] === STRATEGY PLANNING ===")
             print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
@@ -217,12 +222,19 @@ class AIAgent:
                 print(f"[AI_AGENT] Tools: {[step.tool for step in strategy.steps]}")
             
             # 決定論的実行
+            logger.info(f"[DEBUG] 戦略実行開始")
             executed_strategy = await self.execute_detailed_strategy(strategy, user_message)
+            logger.info(f"[DEBUG] 戦略実行完了")
             
             # 動的システムプロンプトで応答生成
+            logger.info(f"[DEBUG] 応答生成開始")
             response = await self.generate_contextual_response_with_strategy(
                 user_message, executed_strategy
             )
+            logger.info(f"[DEBUG] 応答生成完了 - 応答長: {len(response)}")
+            
+            # 最終確認
+            logger.info(f"[DEBUG] 最終戦略確認 - prompt存在: {executed_strategy.strategy_llm_prompt is not None}")
             
             return {
                 "message": response,

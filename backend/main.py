@@ -89,19 +89,34 @@ async def chat(request: ChatRequest):
         
         # AI Agentでメッセージ処理
         result = await ai_agent.process_message(enhanced_message)
+        logger.info(f"[DEBUG] AI Agent処理完了: {list(result.keys())}")
+        
+        # strategy確認ログ
+        strategy = result.get("strategy")
+        logger.info(f"[DEBUG] Strategy object存在: {strategy is not None}")
+        if strategy:
+            logger.info(f"[DEBUG] Strategy type: {type(strategy)}")
+            logger.info(f"[DEBUG] Strategy steps: {len(strategy.steps) if hasattr(strategy, 'steps') else 'No steps attr'}")
+            logger.info(f"[DEBUG] Strategy strategy_llm_prompt存在: {hasattr(strategy, 'strategy_llm_prompt') and strategy.strategy_llm_prompt is not None}")
+            if hasattr(strategy, 'strategy_llm_prompt'):
+                logger.info(f"[DEBUG] Strategy strategy_llm_prompt長さ: {len(str(strategy.strategy_llm_prompt)) if strategy.strategy_llm_prompt else 0}")
+        
+        # to_dict()変換前後の確認
+        strategy_dict = strategy.to_dict() if strategy else None
+        logger.info(f"[DEBUG] Strategy dict作成: {strategy_dict is not None}")
+        if strategy_dict:
+            logger.info(f"[DEBUG] Strategy dict keys: {list(strategy_dict.keys())}")
+            logger.info(f"[DEBUG] Strategy dict strategy_llm_prompt存在: {'strategy_llm_prompt' in strategy_dict}")
+            if 'strategy_llm_prompt' in strategy_dict:
+                logger.info(f"[DEBUG] Strategy dict strategy_llm_prompt値: {strategy_dict['strategy_llm_prompt'] is not None}")
         
         # 会話履歴に保存
         conversation_manager.add_message(
             session_id=session_id,
             user_message=request.message,  # 元のメッセージのみ保存
             ai_response=result["message"],
-            strategy_info=result.get("strategy", {}).to_dict() if result.get("strategy") else {}
+            strategy_info=strategy_dict or {}
         )
-        
-        # strategy確認ログ
-        strategy = result.get("strategy")
-        logger.info(f"[DEBUG] Strategy object in main.py: {strategy is not None}")
-        logger.info(f"[DEBUG] Full result keys: {list(result.keys())}")
         
         return ChatResponse(
             message=result["message"],
