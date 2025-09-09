@@ -24,7 +24,7 @@ class IntegrationEngine:
                               conversation_context: str = "") -> str:
         """統合回答生成メイン処理（MCP結果 + 会話コンテキスト → 最終回答）"""
         
-        if not executed_strategy.steps or not self.is_executed(executed_strategy):
+        if not executed_strategy.steps or not executed_strategy.is_executed():
             # MCP実行なしの場合は通常応答
             return await self.generate_simple_response(user_message, conversation_context)
         
