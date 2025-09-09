@@ -216,38 +216,28 @@ class AIAgent:
         return False
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
-        """メッセージ処理（詳細戦略立案・決定論的実行）"""
+        """メッセージ処理（常に戦略立案・決定論的実行）"""
         try:
-            # MCP利用可能時は詳細戦略立案
-            if self.mcp_available:
-                # 戦略立案（直接 strategy_engine 呼び出し）
-                strategy = await self.strategy_engine.plan_strategy(user_message)
-                
-                print(f"[AI_AGENT] === DETAILED STRATEGY PLANNING ===")
-                print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
-                if strategy.steps:
-                    print(f"[AI_AGENT] Tools: {[step.tool for step in strategy.steps]}")
-                
-                # 決定論的実行
-                executed_strategy = await self.execute_detailed_strategy(strategy, user_message)
-                
-                # 動的システムプロンプトで応答生成
-                response = await self.generate_contextual_response_with_strategy(
-                    user_message, executed_strategy
-                )
-                
-                return {
-                    "message": response,
-                    "strategy": executed_strategy,  # 全情報が含まれたオブジェクト
-                    "mcp_enabled": True
-                }
+            # 常に戦略立案実行（判断は strategy_engine に委譲）
+            strategy = await self.strategy_engine.plan_strategy(user_message)
             
-            # 通常のAI応答
-            response = await self.generate_ai_response(user_message)
+            print(f"[AI_AGENT] === STRATEGY PLANNING ===")
+            print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
+            if strategy.steps:
+                print(f"[AI_AGENT] Tools: {[step.tool for step in strategy.steps]}")
+            
+            # 決定論的実行
+            executed_strategy = await self.execute_detailed_strategy(strategy, user_message)
+            
+            # 動的システムプロンプトで応答生成
+            response = await self.generate_contextual_response_with_strategy(
+                user_message, executed_strategy
+            )
+            
             return {
                 "message": response,
-                "tools_used": [],
-                "mcp_enabled": self.mcp_available
+                "strategy": executed_strategy,
+                "mcp_enabled": len(executed_strategy.steps) > 0  # 実際にツールを使ったかどうか
             }
             
         except Exception as e:
@@ -357,19 +347,6 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
         except Exception as e:
             logger.error(f"Tool result formatting error: {e}")
             return f"ツール実行結果: {json.dumps(tool_result, ensure_ascii=False, indent=2)}"
-    
-    async def generate_ai_response(self, message: str) -> str:
-        """通常のAI応答"""
-        system_prompt = """あなたは親切な金融商品アドバイザーです。
-ユーザーの質問に対して、親しみやすく分かりやすい回答をしてください。
-
-特定の商品情報が必要な場合は、「詳細な商品情報をお調べしますので、具体的な商品名や条件を教えてください」のように案内してください。"""
-        
-        try:
-            return await self.call_claude(system_prompt, message)
-        except Exception as e:
-            logger.error(f"AI response error: {e}")
-            return "申し訳ございません。回答の生成中にエラーが発生しました。"
     
     async def call_claude(self, system_prompt: str, user_message: str) -> str:
         """Claude 3.5 Sonnet呼び出し"""
