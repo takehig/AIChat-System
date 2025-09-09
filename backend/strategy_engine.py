@@ -101,10 +101,28 @@ class StrategyEngine:
             return error_response, full_prompt, error_response, execution_time
     
     async def call_claude(self, system_prompt: str, user_message: str) -> str:
-        """Claude API呼び出し - LLM情報記録版を使用"""
+        """Claude API呼び出し - 基本実装"""
         try:
-            response, _, _, _ = await self.call_claude_with_llm_info(system_prompt, user_message)
-            return response
+            body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 4000,
+                "system": system_prompt,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": user_message
+                    }
+                ]
+            }
+            
+            response = self.bedrock_client.invoke_model(
+                modelId=self.model_id,
+                body=json.dumps(body)
+            )
+            
+            response_body = json.loads(response['body'].read())
+            return response_body['content'][0]['text']
+            
         except Exception as e:
             logger.error(f"Claude API call failed: {e}")
             return f"申し訳ございません。AI応答の生成中にエラーが発生しました: {str(e)}"
