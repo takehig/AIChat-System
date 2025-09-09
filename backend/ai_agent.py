@@ -163,7 +163,7 @@ class AIAgent:
     
     async def discover_available_tools(self):
         """全MCPサーバーからツール情報を収集"""
-        self.available_tools = {}
+        self.available_tools.clear()  # 既存辞書をクリア（参照は維持）
         self.tool_routing = {}
         
         for mcp_name, client in self.mcp_clients.items():
