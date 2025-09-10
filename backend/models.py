@@ -90,7 +90,14 @@ class DetailedStrategy:
                 {
                     "step": step.step,
                     "tool": step.tool,
-                    "reason": step.reason
+                    "reason": step.reason,
+                    "input": getattr(step, 'input', None),
+                    "output": getattr(step, 'output', None),
+                    "execution_time_ms": getattr(step, 'execution_time_ms', None),
+                    "debug_info": getattr(step, 'debug_info', None),
+                    "llm_prompt": getattr(step, 'llm_prompt', None),
+                    "llm_response": getattr(step, 'llm_response', None),
+                    "llm_execution_time_ms": getattr(step, 'llm_execution_time_ms', None)
                 }
                 for step in self.steps
             ],
