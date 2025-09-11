@@ -115,6 +115,8 @@ class AIAgent:
                                 'parameters': tool.get('parameters', {})
                             }
                             self.tool_routing[tool_name] = mcp_name
+                            # 発見されたツールを自動的に有効化
+                            self.enabled_tools.add(tool_name)
                             logger.info(f"Discovered tool: {tool_name} from {mcp_name}")
             except Exception as e:
                 logger.error(f"Failed to discover tools from {mcp_name}: {e}")

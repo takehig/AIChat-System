@@ -50,7 +50,6 @@ class SystemStatus(BaseModel):
     status: str
     mcp_available: bool
     productmaster_enabled: Optional[bool] = False
-    crm_enabled: Optional[bool] = False
     timestamp: str
 
 # 起動時初期化
@@ -154,7 +153,6 @@ async def get_status():
         status="running",
         mcp_available=mcp_available,
         productmaster_enabled=mcp_available,
-        crm_enabled=False,  # ProductMaster MCPの状態
         timestamp=datetime.now().isoformat()
     )
 
@@ -198,28 +196,6 @@ async def toggle_productmaster_mcp():
 async def legacy_chat(request: ChatRequest):
     """Legacy endpoint for backward compatibility"""
     return await chat(request)
-
-@app.get("/api/mcp/crm/status")
-async def get_crm_status():
-    """CRM MCP専用の状態取得"""
-    global ai_agent
-    crm_enabled = getattr(ai_agent, "crm_enabled", False)
-    return {
-        "status": "success",
-        "crm_enabled": crm_enabled,
-        "timestamp": datetime.now().isoformat()
-    }
-
-@app.post("/api/mcp/crm/toggle")
-async def toggle_crm_mcp():
-    global ai_agent
-    try:
-        current_status = getattr(ai_agent, "crm_enabled", False)
-        new_status = not current_status
-        ai_agent.crm_enabled = new_status
-        return {"status": "success", "crm_enabled": new_status}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/tools")
 async def get_all_tools():
@@ -291,7 +267,7 @@ async def get_mcp_tools():
                 crm_data = response.json()
                 tools_info["crm"] = {
                     "available": True,
-                    "enabled": getattr(ai_agent, "crm_enabled", False),
+                    "enabled": any(tool["name"] in ai_agent.enabled_tools for tool in crm_data.get("tools", [])),
                     "tools": crm_data.get("tools", [])
                 }
             else:

@@ -134,7 +134,6 @@ class SystemStatus(BaseModel):
     status: str
     mcp_available: bool
     productmaster_enabled: Optional[bool] = False
-    crm_enabled: Optional[bool] = False
 
 class MCPToggleRequest(BaseModel):
     tool_name: str
