@@ -102,16 +102,16 @@ class MCPClient:
             params = {"name": tool_name, "arguments": arguments}
             print(f"[MCP_CLIENT] About to send request with params: {params}")
             
-            result = await self._send_request("tools/call", params)
+            mcp_dict = await self._send_request("tools/call", params)
             
             print(f"[MCP_CLIENT] Request completed successfully")
             processing_time = round((time.time() - start_time) * 1000, 2)
             
-            print(f"[MCP_CLIENT] MCP server response: {result}")
+            print(f"[MCP_CLIENT] MCP server response: {mcp_dict}")
             
-            if "result" in result:
+            if "result" in mcp_dict:
                 # debug_responseの確認
-                debug_response = result.get("debug_response")
+                debug_response = mcp_dict.get("debug_response")
                 print(f"[MCP_CLIENT] debug_response from server: {debug_response}")
                 print(f"[MCP_CLIENT] debug_response type: {type(debug_response)}")
                 
@@ -125,7 +125,7 @@ class MCPClient:
                     },
                     "response": {
                         "processing_time_ms": processing_time,
-                        "request_id": result.get("id"),
+                        "request_id": mcp_dict.get("id"),
                         "status": "success",
                         "tool_debug": debug_response
                     }
@@ -135,7 +135,7 @@ class MCPClient:
                 print(f"[MCP_CLIENT] tool_debug in debug_info: {debug_info['response']['tool_debug']}")
                 
                 response = {
-                    "result": result["result"],
+                    "result": mcp_dict["result"],
                     "debug_info": debug_info
                 }
                 print(f"[MCP_CLIENT] Final response: {response}")
