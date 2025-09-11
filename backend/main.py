@@ -6,6 +6,7 @@ import boto3
 import json
 import os
 import logging
+import httpx
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from ai_agent import AIAgent
@@ -256,30 +257,52 @@ async def toggle_tool(tool_name: str):
 
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():
-    """利用可能なMCPツール一覧取得"""
+    """利用可能なMCPツール一覧を動的取得"""
     global ai_agent
     
-    tools_info = {
-        "productmaster": {
-            "available": ai_agent.mcp_available if ai_agent else False,
-            "enabled": ai_agent.mcp_available if ai_agent else False,
-            "tools": [
-                {"name": "search_products_flexible", "description": "柔軟な商品検索"},
-                {"name": "get_product_details", "description": "商品詳細取得"},
-                {"name": "get_all_products", "description": "全商品取得"},
-                {"name": "get_statistics", "description": "統計情報取得"}
-            ]
-        },
-        "crm": {
-            "available": False,  # CRM MCPは未実装
-            "enabled": getattr(ai_agent, "crm_enabled", False),
-            "tools": [
-                {"name": "search_customers", "description": "顧客情報を検索します"},
-                {"name": "get_customer_holdings", "description": "顧客の保有商品情報を取得します"},
-                {"name": "search_customers_by_bond_maturity", "description": "債券の満期日条件で顧客を検索します"}
-            ]
+    tools_info = {}
+    
+    # ProductMaster MCP から動的取得
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get("http://localhost:8003/tools/descriptions")
+            if response.status_code == 200:
+                productmaster_data = response.json()
+                tools_info["productmaster"] = {
+                    "available": True,
+                    "enabled": ai_agent.mcp_available if ai_agent else False,
+                    "tools": productmaster_data.get("tools", [])
+                }
+            else:
+                raise Exception(f"HTTP {response.status_code}")
+    except Exception as e:
+        print(f"[MCP_TOOLS] ProductMaster MCP unavailable: {e}")
+        tools_info["productmaster"] = {
+            "available": False,
+            "enabled": False,
+            "tools": []
         }
-    }
+    
+    # CRM MCP から動的取得
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get("http://localhost:8004/tools/descriptions")
+            if response.status_code == 200:
+                crm_data = response.json()
+                tools_info["crm"] = {
+                    "available": True,
+                    "enabled": getattr(ai_agent, "crm_enabled", False),
+                    "tools": crm_data.get("tools", [])
+                }
+            else:
+                raise Exception(f"HTTP {response.status_code}")
+    except Exception as e:
+        print(f"[MCP_TOOLS] CRM MCP unavailable: {e}")
+        tools_info["crm"] = {
+            "available": False,
+            "enabled": False,
+            "tools": []
+        }
     
     return {
         "status": "success",
