@@ -341,32 +341,49 @@
         async function loadToolControls() {
             console.log('[TOOL CONTROL] ツール情報読み込み開始');
             try {
-                const response = await fetch('/api/tools');
+                const response = await fetch('/api/mcp/tools');
                 const data = await response.json();
                 
                 console.log('[TOOL CONTROL] ツール情報取得:', data);
                 
-                const controlsHtml = Object.entries(data.available_tools || {}).map(([toolName, toolInfo]) => {
-                    const isEnabled = data.enabled_tools.includes(toolName);
-                    const iconClass = getToolIcon(toolName);
-                    const colorClass = getToolColor(toolName);
+                // MCPレスポンス形式に対応
+                const allTools = [];
+                if (data.tools) {
+                    Object.entries(data.tools).forEach(([mcpName, mcpInfo]) => {
+                        if (mcpInfo.available && mcpInfo.tools) {
+                            mcpInfo.tools.forEach(tool => {
+                                allTools.push({
+                                    name: tool.name,
+                                    description: tool.description,
+                                    usage_context: tool.usage_context,
+                                    enabled: mcpInfo.enabled,
+                                    mcpName: mcpName
+                                });
+                            });
+                        }
+                    });
+                }
+                
+                const controlsHtml = allTools.map(tool => {
+                    const iconClass = getToolIcon(tool.mcpName);
+                    const colorClass = getToolColor(tool.mcpName);
                     
                     return `
-                        <div class="card border-0 shadow-sm mb-2" id="tool-${toolName}">
+                        <div class="card border-0 shadow-sm mb-2" id="tool-${tool.name}">
                             <div class="card-body p-3">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div class="flex-grow-1">
                                         <div class="d-flex align-items-center mb-1">
                                             <i class="fas ${iconClass} ${colorClass} me-2"></i>
-                                            <h6 class="mb-0 fw-bold">${toolInfo.description}</h6>
-                                            <small class="text-muted ms-2">(${toolName})</small>
+                                            <h6 class="mb-0 fw-bold">${tool.description}</h6>
+                                            <small class="text-muted ms-2">(${tool.name})</small>
                                         </div>
-                                        <p class="small text-muted mb-0">${toolInfo.usage_context}</p>
+                                        <p class="small text-muted mb-0">${tool.usage_context}</p>
                                     </div>
-                                    <button class="btn btn-sm ${isEnabled ? 'btn-success' : 'btn-outline-secondary'}" 
-                                            onclick="toggleTool('${toolName}')">
-                                        <i class="fas ${isEnabled ? 'fa-toggle-on' : 'fa-toggle-off'} me-1"></i>
-                                        ${isEnabled ? '有効' : '無効'}
+                                    <button class="btn btn-sm ${tool.enabled ? 'btn-success' : 'btn-outline-secondary'}" 
+                                            onclick="toggleTool('${tool.name}')">
+                                        <i class="fas ${tool.enabled ? 'fa-toggle-on' : 'fa-toggle-off'} me-1"></i>
+                                        ${tool.enabled ? '有効' : '無効'}
                                     </button>
                                 </div>
                             </div>
