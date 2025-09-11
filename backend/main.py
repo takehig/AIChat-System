@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from ai_agent import AIAgent
 from conversation_manager import ConversationManager
+from system_prompts_api import get_system_prompt_by_key, list_system_prompts
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -285,6 +286,17 @@ async def get_mcp_tools():
         "tools": tools_info,
         "timestamp": datetime.now().isoformat()
     }
+
+# システムプロンプトAPI
+@app.get("/api/system-prompts")
+async def api_list_system_prompts():
+    """システムプロンプト一覧取得"""
+    return await list_system_prompts()
+
+@app.get("/api/system-prompts/{prompt_key}")
+async def api_get_system_prompt(prompt_key: str):
+    """システムプロンプト取得"""
+    return await get_system_prompt_by_key(prompt_key)
 
 # 静的ファイル配信設定（最後に配置）
 app.mount("/", StaticFiles(directory="../web", html=True), name="static")
