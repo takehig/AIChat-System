@@ -224,30 +224,6 @@ class AIAgent:
                     merged_debug[tool_name] = debug_info
         return merged_debug
     
-    async def call_claude(self, system_prompt: str, user_message: str) -> str:
-        """Claude 3.5 Sonnet呼び出し"""
-        try:
-            messages = [{"role": "user", "content": user_message}]
-            
-            body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2000,
-                "system": system_prompt,
-                "messages": messages,
-                "temperature": 0.1
-            }
-            
-            response = self.bedrock_client.invoke_model(
-                modelId=self.model_id,
-                body=json.dumps(body)
-            )
-            
-            response_body = json.loads(response['body'].read())
-            return response_body['content'][0]['text']
-        except Exception as e:
-            logger.error(f"Claude API error: {e}")
-            raise
-    
     async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> DetailedStrategy:
         """戦略に基づく決定論的実行 - 同じオブジェクトに実行結果を埋め込み"""
         current_input = user_message

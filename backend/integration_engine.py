@@ -15,20 +15,6 @@ class IntegrationEngine:
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         self.llm_util = llm_util
     
-    async def call_claude(self, system_prompt: str, user_message: str) -> str:
-        """Claude 3.5 Sonnet呼び出し"""
-        try:
-            response = await self.bedrock_client.converse(
-                modelId=self.model_id,
-                messages=[{"role": "user", "content": [{"text": user_message}]}],
-                system=[{"text": system_prompt}],
-                inferenceConfig={"maxTokens": 4000, "temperature": 0.1}
-            )
-            return response['output']['message']['content'][0]['text']
-        except Exception as e:
-            logger.error(f"Claude API error: {e}")
-            raise
-    
     async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
         """戦略実行結果を含む動的応答生成"""
         
@@ -48,7 +34,7 @@ class IntegrationEngine:
             
             # LLM呼び出し・情報記録
             start_time = time.time()
-            response = await self.call_claude(direct_prompt, user_message)
+            response = await self.llm_util.call_claude(direct_prompt, user_message)
             execution_time = (time.time() - start_time) * 1000
             
             logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, prompt長: {len(combined_prompt)}")
@@ -69,7 +55,7 @@ class IntegrationEngine:
             
             # LLM呼び出し・情報記録
             start_time = time.time()
-            response = await self.call_claude(direct_prompt, user_message)
+            response = await self.llm_util.call_claude(direct_prompt, user_message)
             execution_time = (time.time() - start_time) * 1000
             
             # 最終応答LLM情報を記録
@@ -112,7 +98,7 @@ class IntegrationEngine:
         
         # LLM呼び出し・情報記録
         start_time = time.time()
-        response = await self.call_claude(system_prompt, "上記を基に回答してください。")
+        response = await self.llm_util.call_claude(system_prompt, "上記を基に回答してください。")
         execution_time = (time.time() - start_time) * 1000
         
         # 最終応答LLM情報を記録
