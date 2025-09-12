@@ -4,9 +4,15 @@ import time
 import logging
 from typing import Dict, Any, List
 from models import DetailedStrategy
-from system_prompt_management import get_prompt_from_management
 
 logger = logging.getLogger(__name__)
+
+# get_prompt_from_management は ai_agent.py で定義されているため、
+# 循環インポートを避けるため、呼び出し時に動的インポートを使用
+async def get_prompt_from_management(prompt_name: str) -> str:
+    """SystemPrompt Management からプロンプトを取得（動的インポート）"""
+    from ai_agent import get_prompt_from_management as get_prompt
+    return await get_prompt(prompt_name)
 
 class IntegrationEngine:
     """回答統合専用エンジン - 戦略実行結果から最終回答を生成"""
