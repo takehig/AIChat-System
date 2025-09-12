@@ -11,50 +11,6 @@ class SystemPromptClient:
     def __init__(self, base_url: str = "http://localhost:8007"):
         self.base_url = base_url
         self.timeout = 5  # 5秒タイムアウト
-        
-        # フォールバック用デフォルトプロンプト
-        self.fallback_prompts = {
-            "strategy_planning": """あなたは戦略立案の専門家です。上記の利用可能ツールとユーザーリクエストを分析し、必要最小限のツールのみを選択してください。
-
-## 重要な判定ルール
-1. ユーザーが明示的に要求していない情報は取得しない
-2. 利用可能ツールの中から適切なものを選択する
-3. ツールが不要な場合は steps を空配列 [] にする
-4. 複数ツールの無駄な組み合わせを避ける
-
-## 判定の考え方
-- 情報要求の種類を特定する（商品情報、顧客情報、その他）
-- 利用可能ツールの説明文と照らし合わせる
-- 明示的に要求されていない情報は取得しない
-- 一般的な挨拶や質問にはツールは不要
-
-## 出力形式（必須）
-以下の形式の純粋なJSONのみを返してください。説明文・前置き・後置きは一切不要です。
-
-{{
-    "steps": [
-        {{"step": 1, "tool": "ツール名", "reason": "このツールを使う理由"}}
-    ]
-}}
-
-## 出力例
-情報取得が必要:
-{{"steps": [{{"step": 1, "tool": "search_products_flexible", "reason": "商品情報を検索するため"}}]}}
-
-複数ツール必要:
-{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
-
-ツール不要:
-{{"steps": []}}
-
-## 禁止事項
-- 明示的に要求されていない情報の取得禁止
-- 利用可能ツール以外の使用禁止
-- JSON以外のテキスト出力禁止
-- 説明文・コメント・前置き禁止
-
-利用可能ツールの中から、ユーザーが明示的に要求した情報のみを取得する最小限のツール選択をしてください。"""
-        }
     
     def get_prompt(self, prompt_key: str) -> str:
         """
@@ -65,49 +21,25 @@ class SystemPromptClient:
             
         Returns:
             str: プロンプト文字列
+            
+        Raises:
+            Exception: API接続エラーまたはプロンプト取得失敗時
         """
-        try:
-            # SystemPrompt Management API呼び出し
-            url = f"{self.base_url}/api/prompt/{prompt_key}"
-            logger.info(f"[SystemPrompt] API呼び出し: {url}")
-            
-            response = requests.get(url, timeout=self.timeout)
-            response.raise_for_status()
-            
-            data = response.json()
-            prompt_text = data.get("prompt_text", "")
-            
-            if prompt_text:
-                logger.info(f"[SystemPrompt] プロンプト取得成功: {prompt_key}")
-                return prompt_text
-            else:
-                logger.warning(f"[SystemPrompt] プロンプトが空: {prompt_key}")
-                return self._get_fallback_prompt(prompt_key)
-                
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[SystemPrompt] API接続エラー: {e}")
-            return self._get_fallback_prompt(prompt_key)
-        except Exception as e:
-            logger.error(f"[SystemPrompt] 予期しないエラー: {e}")
-            return self._get_fallback_prompt(prompt_key)
-    
-    def _get_fallback_prompt(self, prompt_key: str) -> str:
-        """
-        フォールバックプロンプトを取得
+        # SystemPrompt Management API呼び出し
+        url = f"{self.base_url}/api/prompt/{prompt_key}"
+        logger.info(f"[SystemPrompt] API呼び出し: {url}")
         
-        Args:
-            prompt_key: プロンプトキー
-            
-        Returns:
-            str: フォールバックプロンプト
-        """
-        fallback = self.fallback_prompts.get(prompt_key, "")
-        if fallback:
-            logger.info(f"[SystemPrompt] フォールバック使用: {prompt_key}")
-            return fallback
-        else:
-            logger.error(f"[SystemPrompt] フォールバックも見つからない: {prompt_key}")
-            return "あなたは親切なAIアシスタントです。ユーザーの質問に丁寧に回答してください。"
+        response = requests.get(url, timeout=self.timeout)
+        response.raise_for_status()
+        
+        data = response.json()
+        prompt_text = data.get("prompt_text", "")
+        
+        if not prompt_text:
+            raise Exception(f"プロンプトが空: {prompt_key}")
+        
+        logger.info(f"[SystemPrompt] プロンプト取得成功: {prompt_key}")
+        return prompt_text
     
     def health_check(self) -> bool:
         """
@@ -119,18 +51,9 @@ class SystemPromptClient:
         try:
             url = f"{self.base_url}/api/status"
             response = requests.get(url, timeout=self.timeout)
-            response.raise_for_status()
-            
-            data = response.json()
-            status = data.get("status", "")
-            
-            if status == "running":
-                logger.info("[SystemPrompt] ヘルスチェック成功")
-                return True
-            else:
-                logger.warning(f"[SystemPrompt] サービス状態異常: {status}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"[SystemPrompt] ヘルスチェック失敗: {e}")
+            return response.status_code == 200
+        except:
             return False
+
+# グローバルインスタンス
+prompt_client = SystemPromptClient()

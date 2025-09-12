@@ -36,7 +36,19 @@ class StrategyEngine:
         logger.info(f"[DEBUG] 戦略立案処理継続 - ツール有無に関わらず実行")
         
         # SystemPrompt Management からベースプロンプトを取得
-        base_prompt = self.prompt_client.get_prompt("strategy_planning")
+        try:
+            base_prompt = self.prompt_client.get_prompt("strategy_planning")
+        except Exception as e:
+            logger.error(f"[DEBUG] SystemPrompt Management取得失敗: {e}")
+            # エラー時は戦略立案失敗として処理
+            strategy = DetailedStrategy(
+                steps=[],
+                parse_error=True,
+                strategy_llm_prompt="",
+                strategy_llm_response="",
+                strategy_llm_execution_time_ms=0
+            )
+            return strategy
         
         # ツール説明文を生成（ツールがない場合は明示）
         tools_description = "\n".join([
