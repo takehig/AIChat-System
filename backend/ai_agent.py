@@ -11,24 +11,8 @@ from strategy_engine import StrategyEngine
 from integration_engine import IntegrationEngine
 from mcp_executor import MCPExecutor
 from models import DetailedStrategy, DetailedStep
-from system_prompts_api import get_system_prompt_by_key
 
 logger = logging.getLogger(__name__)
-
-async def get_prompt_from_management(prompt_name: str) -> str:
-    """SystemPrompt Management からプロンプト取得"""
-    try:
-        prompt_data = await get_system_prompt_by_key(prompt_name)
-        return prompt_data.get("content", "")
-    except Exception as e:
-        logger.error(f"SystemPrompt Management取得失敗 {prompt_name}: {e}")
-        # フォールバック: 固定エラーメッセージ
-        if prompt_name == "direct_response_prompt":
-            return "証券会社の社内情報システムとして、質問に適切に回答してください。"
-        elif prompt_name == "strategy_result_response_prompt":
-            return "証券会社の社内情報システムとして回答してください。"
-        else:
-            return "システムエラーが発生しました。"
 
 @dataclass
 class Intent:
