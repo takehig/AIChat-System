@@ -11,8 +11,24 @@ from strategy_engine import StrategyEngine
 from integration_engine import IntegrationEngine
 from mcp_executor import MCPExecutor
 from models import DetailedStrategy, DetailedStep
+from system_prompts_api import get_system_prompt_by_key
 
 logger = logging.getLogger(__name__)
+
+async def get_prompt_from_management(prompt_name: str) -> str:
+    """SystemPrompt Management からプロンプト取得"""
+    try:
+        prompt_data = await get_system_prompt_by_key(prompt_name)
+        return prompt_data.get("content", "")
+    except Exception as e:
+        logger.error(f"SystemPrompt Management取得失敗 {prompt_name}: {e}")
+        # フォールバック: 固定エラーメッセージ
+        if prompt_name == "direct_response_prompt":
+            return "証券会社の社内情報システムとして、質問に適切に回答してください。"
+        elif prompt_name == "strategy_result_response_prompt":
+            return "証券会社の社内情報システムとして回答してください。"
+        else:
+            return "システムエラーが発生しました。"
 
 @dataclass
 class Intent:
@@ -374,12 +390,31 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
             return {"error": str(e)}
     
     async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
-        """戦略実行結果を含む動的応答生成"""
-        if not executed_strategy.steps or not executed_strategy.is_executed():
-            return await self.call_claude(
-                "証券会社の社内情報システムとして、質問に適切に回答してください。",
-                user_message
+        """戦略実行結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
+        
+        # 戦略立案エラー時は直接回答（ハルシネーション防止）
+        if executed_strategy.parse_error:
+            direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
+                direct_prompt, user_message
             )
+            # 最終応答LLM情報を記録
+            executed_strategy.final_llm_prompt = prompt
+            executed_strategy.final_llm_response = llm_response
+            executed_strategy.final_llm_execution_time_ms = execution_time
+            return response
+        
+        # ツール未実行時も直接回答
+        if not executed_strategy.steps or not executed_strategy.is_executed():
+            direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
+                direct_prompt, user_message
+            )
+            # 最終応答LLM情報を記録
+            executed_strategy.final_llm_prompt = prompt
+            executed_strategy.final_llm_response = llm_response
+            executed_strategy.final_llm_execution_time_ms = execution_time
+            return response
         
         # 実行結果サマリー生成
         results_summary = "\n\n".join([
@@ -387,20 +422,16 @@ JSONをそのまま表示せず、自然な日本語で回答してください�
             for step in executed_strategy.steps if step.output
         ])
         
+        # SystemPrompt Management からプロンプトテンプレート取得
+        strategy_prompt_template = await get_prompt_from_management("strategy_result_response_prompt")
+        
         # 動的システムプロンプト生成
-        system_prompt = f"""証券会社の社内情報システムとして回答してください。
-
-ユーザーの質問: {user_message}
-
-実行結果:
-{results_summary}
-
-回答要件:
-- 質問の意図に応じて適切に回答
-- 実行した処理の流れを簡潔に説明
-- 最終的な結果を分かりやすく提示
-- 過度に営業的にならず、事実ベースで回答
-- 実行時間: {sum(s.execution_time_ms or 0 for s in executed_strategy.steps)}ms"""
+        total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
+        system_prompt = strategy_prompt_template.format(
+            user_message=user_message,
+            results_summary=results_summary,
+            total_execution_time=total_execution_time
+        )
 
         response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(system_prompt, "上記を基に回答してください。")
         
