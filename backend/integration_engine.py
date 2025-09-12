@@ -4,7 +4,7 @@ import time
 import logging
 from typing import Dict, Any, List
 from models import DetailedStrategy
-from system_prompt_management import get_prompt_from_management
+from backend.system_prompt_management import get_prompt_from_management
 
 logger = logging.getLogger(__name__)
 
