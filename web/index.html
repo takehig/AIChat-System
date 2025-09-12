@@ -702,7 +702,29 @@
                 `;
             });
             
-            // 最終応答LLM情報
+            // 最終応答LLM情報（既存の final_llm_* から final_response_llm_* に変更）
+            if (strategy.final_response_llm_prompt) {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-info">🎨 最終応答生成LLM</h6>
+                        <div class="border border-info rounded p-2">
+                            <div class="mb-2">
+                                <strong>実行時間:</strong> ${Math.round(strategy.final_response_llm_execution_time_ms || 0)}ms
+                            </div>
+                            <div class="mb-2">
+                                <strong>プロンプト:</strong>
+                                <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.final_response_llm_prompt}</pre>
+                            </div>
+                            <div class="mb-2">
+                                <strong>応答:</strong>
+                                <pre class="bg-light p-2 small mt-1 border rounded" style="max-height: 200px; overflow-y: auto;">${strategy.final_response_llm_response}</pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 既存の最終応答LLM（generate_contextual_response_with_strategy用）
             if (strategy.final_llm_prompt) {
                 debugHtml += `
                     <div class="mb-3">

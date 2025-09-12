@@ -43,6 +43,11 @@ class DetailedStrategy:
     strategy_llm_response: Optional[str] = None
     strategy_llm_execution_time_ms: Optional[float] = None
     
+    # 最終応答生成LLM情報
+    final_response_llm_prompt: Optional[str] = None
+    final_response_llm_response: Optional[str] = None
+    final_response_llm_execution_time_ms: Optional[float] = None
+    
     # パース情報
     parse_error: bool = False
     parse_error_message: Optional[str] = None
@@ -104,6 +109,9 @@ class DetailedStrategy:
             "strategy_llm_prompt": self.strategy_llm_prompt,
             "strategy_llm_response": self.strategy_llm_response,
             "strategy_llm_execution_time_ms": self.strategy_llm_execution_time_ms,
+            "final_response_llm_prompt": self.final_response_llm_prompt,
+            "final_response_llm_response": self.final_response_llm_response,
+            "final_response_llm_execution_time_ms": self.final_response_llm_execution_time_ms,
             "parse_error": self.parse_error,
             "parse_error_message": self.parse_error_message,
             "raw_response": self.raw_response,

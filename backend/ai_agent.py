@@ -240,11 +240,19 @@ class AIAgent:
                     merged_debug[tool_name] = debug_info
         return merged_debug
     
-    async def generate_contextual_response_with_tools(self, user_message: str, tool_results: list) -> str:
-        """ツール結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
+    async def generate_contextual_response_with_tools(self, user_message: str, tool_results: list, executed_strategy: DetailedStrategy = None) -> str:
+        """ツール結果を含む動的応答生成（SystemPrompt Management v2.0.0対応・LLM情報記録対応）"""
         if not tool_results:
             direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            return await self.call_claude(direct_prompt, user_message)
+            response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
+                direct_prompt, user_message
+            )
+            # 最終応答LLM情報を記録
+            if executed_strategy:
+                executed_strategy.final_response_llm_prompt = prompt
+                executed_strategy.final_response_llm_response = llm_response
+                executed_strategy.final_response_llm_execution_time_ms = execution_time
+            return response
         
         # 使用ツール情報を動的生成
         tools_used = [result["tool"] for result in tool_results if "result" in result]
@@ -272,7 +280,17 @@ class AIAgent:
             tools_failed_requirement=tools_failed_requirement
         )
 
-        return await self.call_claude(system_prompt, "上記を基に回答してください。")
+        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
+            system_prompt, "上記を基に回答してください."
+        )
+        
+        # 最終応答LLM情報を記録
+        if executed_strategy:
+            executed_strategy.final_response_llm_prompt = prompt
+            executed_strategy.final_response_llm_response = llm_response
+            executed_strategy.final_response_llm_execution_time_ms = execution_time
+        
+        return response
     
     async def call_claude(self, system_prompt: str, user_message: str) -> str:
         """Claude 3.5 Sonnet呼び出し"""
