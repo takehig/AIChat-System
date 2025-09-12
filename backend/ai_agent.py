@@ -274,32 +274,6 @@ class AIAgent:
 
         return await self.call_claude(system_prompt, "上記を基に回答してください。")
     
-    async def format_tool_result(self, user_message: str, tool_name: str, tool_result: Dict[str, Any]) -> str:
-        """ツール結果整形"""
-        # tool_resultから実際の結果を取得
-        actual_result = tool_result.get('result', tool_result)
-        
-        system_prompt = f"""あなたは親切な金融商品アドバイザーです。
-ユーザーの質問に対して、ツール実行結果を基に自然で分かりやすい回答を作成してください。
-
-ユーザーの質問: {user_message}
-使用したツール: {tool_name}
-ツール実行結果: {json.dumps(actual_result, ensure_ascii=False, indent=2)}
-
-回答ガイドライン:
-1. ユーザーの質問に直接答える
-2. 結果を分かりやすく整理して提示
-3. 必要に応じて追加の提案をする
-4. 親しみやすい口調で回答
-
-JSONをそのまま表示せず、自然な日本語で回答してください。"""
-        
-        try:
-            return await self.call_claude(system_prompt, "上記の情報を基に回答を作成してください。")
-        except Exception as e:
-            logger.error(f"Tool result formatting error: {e}")
-            return f"ツール実行結果: {json.dumps(tool_result, ensure_ascii=False, indent=2)}"
-    
     async def call_claude(self, system_prompt: str, user_message: str) -> str:
         """Claude 3.5 Sonnet呼び出し"""
         try:
