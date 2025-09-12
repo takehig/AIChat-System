@@ -2,98 +2,111 @@
 import json
 import time
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from models import DetailedStrategy
+from system_prompt_management import get_prompt_from_management
 
 logger = logging.getLogger(__name__)
 
 class IntegrationEngine:
-    """回答統合専用エンジン - 将来大幅拡張予定"""
+    """回答統合専用エンジン - 戦略実行結果から最終回答を生成"""
     
     def __init__(self, bedrock_client, llm_util):
         self.bedrock_client = bedrock_client
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         self.llm_util = llm_util
-        
-        # === 将来拡張用（現在は空実装） ===
-        self.context_templates = {}      # コンテキストテンプレート
-        self.integration_patterns = {}   # 統合パターン
-        self.quality_metrics = {}        # 品質メトリクス
     
-    async def generate_response(self, user_message: str, executed_strategy: DetailedStrategy, 
-                              conversation_context: str = "") -> str:
-        """統合回答生成メイン処理（MCP結果 + 会話コンテキスト → 最終回答）"""
+    async def call_claude(self, system_prompt: str, user_message: str) -> str:
+        """Claude 3.5 Sonnet呼び出し"""
+        try:
+            response = await self.bedrock_client.converse(
+                modelId=self.model_id,
+                messages=[{"role": "user", "content": [{"text": user_message}]}],
+                system=[{"text": system_prompt}],
+                inferenceConfig={"maxTokens": 4000, "temperature": 0.1}
+            )
+            return response['output']['message']['content'][0]['text']
+        except Exception as e:
+            logger.error(f"Claude API error: {e}")
+            raise
+    
+    async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
+        """戦略実行結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
         
+        logger.info(f"[DEBUG] generate_contextual_response_with_strategy開始")
+        logger.info(f"[DEBUG] parse_error: {executed_strategy.parse_error}")
+        logger.info(f"[DEBUG] steps数: {len(executed_strategy.steps) if executed_strategy.steps else 0}")
+        logger.info(f"[DEBUG] is_executed: {executed_strategy.is_executed()}")
+        
+        # 戦略立案エラー時は直接回答（ハルシネーション防止）
+        if executed_strategy.parse_error:
+            logger.info(f"[DEBUG] 戦略立案エラー処理開始")
+            direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            logger.info(f"[DEBUG] direct_prompt取得完了: {len(direct_prompt) if direct_prompt else 0}文字")
+            
+            # 責任分解: プロンプト結合は呼び出し側で実行
+            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
+            
+            # LLM呼び出し・情報記録
+            start_time = time.time()
+            response = await self.call_claude(direct_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            
+            logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, prompt長: {len(combined_prompt)}")
+            
+            # 最終応答LLM情報を記録
+            executed_strategy.final_response_llm_prompt = combined_prompt
+            executed_strategy.final_response_llm_response = response
+            executed_strategy.final_response_llm_execution_time_ms = execution_time
+            logger.info(f"[DEBUG] 最終応答LLM情報記録完了")
+            return response
+        
+        # ツール未実行時も直接回答
         if not executed_strategy.steps or not executed_strategy.is_executed():
-            # MCP実行なしの場合は通常応答
-            return await self.generate_simple_response(user_message, conversation_context)
+            direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            
+            # 責任分解: プロンプト結合は呼び出し側で実行
+            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
+            
+            # LLM呼び出し・情報記録
+            start_time = time.time()
+            response = await self.call_claude(direct_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            
+            # 最終応答LLM情報を記録
+            executed_strategy.final_response_llm_prompt = combined_prompt
+            executed_strategy.final_response_llm_response = response
+            executed_strategy.final_response_llm_execution_time_ms = execution_time
+            return response
         
         # 実行結果サマリー生成
-        results_summary = "\\n\\n".join([
-            f"【Step {step.step}: {step.tool}】\\n理由: {step.reason}\\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
+        results_summary = "\n\n".join([
+            f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
             for step in executed_strategy.steps if step.output
         ])
         
+        # SystemPrompt Management からプロンプトテンプレート取得
+        strategy_prompt_template = await get_prompt_from_management("strategy_result_response_prompt")
+        
         # 動的システムプロンプト生成
-        system_prompt = f"""証券会社の社内情報システムとして回答してください。
-
-{conversation_context}
-
-ユーザーの質問: {user_message}
-
-実行結果:
-{results_summary}
-
-回答要件:
-- 質問の意図に応じて適切に回答
-- 実行した処理の流れを簡潔に説明
-- 最終的な結果を分かりやすく提示
-- 過度に営業的にならず、事実ベースで回答
-- 実行時間: {sum(s.execution_time_ms or 0 for s in executed_strategy.steps)}ms"""
-
-        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
-            system_prompt, "上記を基に回答してください。"
+        total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
+        system_prompt = strategy_prompt_template.format(
+            user_message=user_message,
+            results_summary=results_summary,
+            total_execution_time=total_execution_time
         )
         
+        # 責任分解: プロンプト結合は呼び出し側で実行
+        combined_prompt = f"{system_prompt}\n\n上記を基に回答してください。"
+        
+        # LLM呼び出し・情報記録
+        start_time = time.time()
+        response = await self.call_claude(system_prompt, "上記を基に回答してください。")
+        execution_time = (time.time() - start_time) * 1000
+        
         # 最終応答LLM情報を記録
-        executed_strategy.final_llm_prompt = prompt
-        executed_strategy.final_llm_response = llm_response
-        executed_strategy.final_llm_execution_time_ms = execution_time
+        executed_strategy.final_response_llm_prompt = combined_prompt
+        executed_strategy.final_response_llm_response = response
+        executed_strategy.final_response_llm_execution_time_ms = execution_time
         
         return response
-    
-    async def generate_simple_response(self, user_message: str, conversation_context: str = "") -> str:
-        """シンプル回答生成（MCP実行なし）"""
-        
-        system_prompt = f"""あなたは親切な金融商品アドバイザーです。
-ユーザーの質問に対して、親しみやすく分かりやすい回答をしてください。
-
-{conversation_context}
-
-特定の商品情報が必要な場合は、「詳細な商品情報をお調べしますので、具体的な商品名や条件を教えてください」のように案内してください。"""
-        
-        try:
-            return await self.call_claude(system_prompt, user_message)
-        except Exception as e:
-            logger.error(f"AI response error: {e}")
-            return "申し訳ございません。回答の生成中にエラーが発生しました。"
-    
-        """戦略が実行済みかチェック"""
-        return any(step.output is not None for step in strategy.steps)
-    
-    # === 将来拡張用メソッド（空実装） ===
-    async def analyze_result_quality(self, mcp_results: dict) -> float:
-        """結果品質分析（将来実装）"""
-        pass
-    
-    async def build_adaptive_context(self, results: dict, query: str) -> str:
-        """適応的コンテキスト構築（将来実装）"""
-        pass
-    
-    async def detect_conflicts(self, mcp_results: dict) -> list:
-        """結果矛盾検出（将来実装）"""
-        pass
-    
-    async def optimize_prompt_template(self, query_type: str) -> str:
-        """プロンプトテンプレート最適化（将来実装）"""
-        pass

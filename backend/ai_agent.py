@@ -180,7 +180,7 @@ class AIAgent:
             
             # 動的システムプロンプトで応答生成
             logger.info(f"[DEBUG] 応答生成開始")
-            response = await self.generate_contextual_response_with_strategy(
+            response = await self.integration_engine.generate_contextual_response_with_strategy(
                 user_message, executed_strategy
             )
             logger.info(f"[DEBUG] 応答生成完了 - 応答長: {len(response)}")
@@ -239,70 +239,6 @@ class AIAgent:
                 if debug_info:
                     merged_debug[tool_name] = debug_info
         return merged_debug
-    
-    async def generate_contextual_response_with_tools(self, user_message: str, tool_results: list, executed_strategy: DetailedStrategy = None) -> str:
-        """ツール結果を含む動的応答生成（SystemPrompt Management v2.0.0対応・LLM情報記録対応）"""
-        if not tool_results:
-            direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            
-            # 責任分解: プロンプト結合は呼び出し側で実行
-            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
-            
-            # LLM呼び出し・情報記録
-            import time
-            start_time = time.time()
-            response = await self.call_claude(direct_prompt, user_message)
-            execution_time = (time.time() - start_time) * 1000
-            
-            # 最終応答LLM情報を記録
-            if executed_strategy:
-                executed_strategy.final_response_llm_prompt = combined_prompt
-                executed_strategy.final_response_llm_response = response
-                executed_strategy.final_response_llm_execution_time_ms = execution_time
-            return response
-        
-        # 使用ツール情報を動的生成
-        tools_used = [result["tool"] for result in tool_results if "result" in result]
-        tools_failed = [result["tool"] for result in tool_results if "error" in result]
-        
-        tools_summary = "\n\n".join([
-            f"【{result['tool']}の結果】\n{json.dumps(result.get('result', result.get('error')), ensure_ascii=False, indent=2)}"
-            for result in tool_results
-        ])
-        
-        # SystemPrompt Management からプロンプトテンプレート取得
-        tool_prompt_template = await get_prompt_from_management("tool_result_response_prompt")
-        
-        # 動的変数準備
-        tools_used_str = ', '.join(tools_used) if tools_used else 'なし'
-        tools_failed_text = f'実行に失敗したツール: {", ".join(tools_failed)}' if tools_failed else ''
-        tools_failed_requirement = '- 失敗したツールがある場合は、その旨を説明' if tools_failed else ''
-        
-        # 動的システムプロンプト生成
-        system_prompt = tool_prompt_template.format(
-            user_message=user_message,
-            tools_used=tools_used_str,
-            tools_failed_text=tools_failed_text,
-            tools_summary=tools_summary,
-            tools_failed_requirement=tools_failed_requirement
-        )
-        
-        # 責任分解: プロンプト結合は呼び出し側で実行
-        combined_prompt = f"{system_prompt}\n\n上記を基に回答してください。"
-        
-        # LLM呼び出し・情報記録
-        import time
-        start_time = time.time()
-        response = await self.call_claude(system_prompt, "上記を基に回答してください。")
-        execution_time = (time.time() - start_time) * 1000
-        
-        # 最終応答LLM情報を記録
-        if executed_strategy:
-            executed_strategy.final_response_llm_prompt = combined_prompt
-            executed_strategy.final_response_llm_response = response
-            executed_strategy.final_response_llm_execution_time_ms = execution_time
-        
-        return response
     
     async def call_claude(self, system_prompt: str, user_message: str) -> str:
         """Claude 3.5 Sonnet呼び出し"""
@@ -390,87 +326,3 @@ class AIAgent:
                 return {"error": "MCP server unavailable"}
         except Exception as e:
             return {"error": str(e)}
-    
-    async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
-        """戦略実行結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
-        
-        logger.info(f"[DEBUG] generate_contextual_response_with_strategy開始")
-        logger.info(f"[DEBUG] parse_error: {executed_strategy.parse_error}")
-        logger.info(f"[DEBUG] steps数: {len(executed_strategy.steps) if executed_strategy.steps else 0}")
-        logger.info(f"[DEBUG] is_executed: {executed_strategy.is_executed()}")
-        
-        # 戦略立案エラー時は直接回答（ハルシネーション防止）
-        if executed_strategy.parse_error:
-            logger.info(f"[DEBUG] 戦略立案エラー処理開始")
-            direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            logger.info(f"[DEBUG] direct_prompt取得完了: {len(direct_prompt) if direct_prompt else 0}文字")
-            
-            # 責任分解: プロンプト結合は呼び出し側で実行
-            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
-            
-            # LLM呼び出し・情報記録
-            import time
-            start_time = time.time()
-            response = await self.call_claude(direct_prompt, user_message)
-            execution_time = (time.time() - start_time) * 1000
-            
-            logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, prompt長: {len(combined_prompt)}")
-            
-            # 最終応答LLM情報を記録
-            executed_strategy.final_response_llm_prompt = combined_prompt
-            executed_strategy.final_response_llm_response = response
-            executed_strategy.final_response_llm_execution_time_ms = execution_time
-            logger.info(f"[DEBUG] 最終応答LLM情報記録完了")
-            return response
-        
-        # ツール未実行時も直接回答
-        if not executed_strategy.steps or not executed_strategy.is_executed():
-            direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            
-            # 責任分解: プロンプト結合は呼び出し側で実行
-            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
-            
-            # LLM呼び出し・情報記録
-            import time
-            start_time = time.time()
-            response = await self.call_claude(direct_prompt, user_message)
-            execution_time = (time.time() - start_time) * 1000
-            
-            # 最終応答LLM情報を記録
-            executed_strategy.final_response_llm_prompt = combined_prompt
-            executed_strategy.final_response_llm_response = response
-            executed_strategy.final_response_llm_execution_time_ms = execution_time
-            return response
-        
-        # 実行結果サマリー生成
-        results_summary = "\n\n".join([
-            f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
-            for step in executed_strategy.steps if step.output
-        ])
-        
-        # SystemPrompt Management からプロンプトテンプレート取得
-        strategy_prompt_template = await get_prompt_from_management("strategy_result_response_prompt")
-        
-        # 動的システムプロンプト生成
-        total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
-        system_prompt = strategy_prompt_template.format(
-            user_message=user_message,
-            results_summary=results_summary,
-            total_execution_time=total_execution_time
-        )
-        
-        # 責任分解: プロンプト結合は呼び出し側で実行
-        combined_prompt = f"{system_prompt}\n\n上記を基に回答してください。"
-        
-        # LLM呼び出し・情報記録
-        import time
-        start_time = time.time()
-        response = await self.call_claude(system_prompt, "上記を基に回答してください。")
-        execution_time = (time.time() - start_time) * 1000
-        
-        # 最終応答LLM情報を記録
-        executed_strategy.final_response_llm_prompt = combined_prompt
-        executed_strategy.final_response_llm_response = response
-        executed_strategy.final_response_llm_execution_time_ms = execution_time
-        
-        return response
