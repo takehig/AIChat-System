@@ -72,27 +72,10 @@ class IntegrationEngine:
         ])
         
         # SystemPrompt Management から戦略結果応答プロンプトを取得
-        try:
-            prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
-            strategy_prompt_template = prompt_data.get("prompt_text", "")
-            if not strategy_prompt_template:
-                raise Exception("プロンプトが空")
-        except Exception as e:
-            logger.error(f"SystemPrompt Management取得失敗: {e}")
-            # フォールバック: 直接プロンプト
-            strategy_prompt_template = """証券会社の社内情報システムとして回答してください。
-
-ユーザーの質問: {user_message}
-
-実行結果:
-{results_summary}
-
-回答要件:
-- 質問の意図に応じて適切に回答
-- 実行した処理の流れを簡潔に説明
-- 最終的な結果を分かりやすく提示
-- 過度に営業的にならず、事実ベースで回答
-- 実行時間: {total_execution_time}ms"""
+        prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
+        strategy_prompt_template = prompt_data.get("prompt_text", "")
+        if not strategy_prompt_template:
+            raise Exception("strategy_result_response_prompt が空です")
         
         # 動的システムプロンプト生成
         total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
