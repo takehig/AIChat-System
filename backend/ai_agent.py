@@ -244,13 +244,20 @@ class AIAgent:
         """ツール結果を含む動的応答生成（SystemPrompt Management v2.0.0対応・LLM情報記録対応）"""
         if not tool_results:
             direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
-                direct_prompt, user_message
-            )
+            
+            # 責任分解: プロンプト結合は呼び出し側で実行
+            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
+            
+            # LLM呼び出し・情報記録
+            import time
+            start_time = time.time()
+            response = await self.call_claude(direct_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            
             # 最終応答LLM情報を記録
             if executed_strategy:
-                executed_strategy.final_response_llm_prompt = prompt
-                executed_strategy.final_response_llm_response = llm_response
+                executed_strategy.final_response_llm_prompt = combined_prompt
+                executed_strategy.final_response_llm_response = response
                 executed_strategy.final_response_llm_execution_time_ms = execution_time
             return response
         
@@ -279,15 +286,20 @@ class AIAgent:
             tools_summary=tools_summary,
             tools_failed_requirement=tools_failed_requirement
         )
-
-        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
-            system_prompt, "上記を基に回答してください."
-        )
+        
+        # 責任分解: プロンプト結合は呼び出し側で実行
+        combined_prompt = f"{system_prompt}\n\n上記を基に回答してください。"
+        
+        # LLM呼び出し・情報記録
+        import time
+        start_time = time.time()
+        response = await self.call_claude(system_prompt, "上記を基に回答してください。")
+        execution_time = (time.time() - start_time) * 1000
         
         # 最終応答LLM情報を記録
         if executed_strategy:
-            executed_strategy.final_response_llm_prompt = prompt
-            executed_strategy.final_response_llm_response = llm_response
+            executed_strategy.final_response_llm_prompt = combined_prompt
+            executed_strategy.final_response_llm_response = response
             executed_strategy.final_response_llm_execution_time_ms = execution_time
         
         return response
@@ -392,13 +404,21 @@ class AIAgent:
             logger.info(f"[DEBUG] 戦略立案エラー処理開始")
             direct_prompt = await get_prompt_from_management("direct_response_prompt")
             logger.info(f"[DEBUG] direct_prompt取得完了: {len(direct_prompt) if direct_prompt else 0}文字")
-            response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
-                direct_prompt, user_message
-            )
-            logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, prompt長: {len(prompt)}")
+            
+            # 責任分解: プロンプト結合は呼び出し側で実行
+            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
+            
+            # LLM呼び出し・情報記録
+            import time
+            start_time = time.time()
+            response = await self.call_claude(direct_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            
+            logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, prompt長: {len(combined_prompt)}")
+            
             # 最終応答LLM情報を記録
-            executed_strategy.final_response_llm_prompt = prompt
-            executed_strategy.final_response_llm_response = llm_response
+            executed_strategy.final_response_llm_prompt = combined_prompt
+            executed_strategy.final_response_llm_response = response
             executed_strategy.final_response_llm_execution_time_ms = execution_time
             logger.info(f"[DEBUG] 最終応答LLM情報記録完了")
             return response
@@ -406,12 +426,19 @@ class AIAgent:
         # ツール未実行時も直接回答
         if not executed_strategy.steps or not executed_strategy.is_executed():
             direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
-                direct_prompt, user_message
-            )
+            
+            # 責任分解: プロンプト結合は呼び出し側で実行
+            combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
+            
+            # LLM呼び出し・情報記録
+            import time
+            start_time = time.time()
+            response = await self.call_claude(direct_prompt, user_message)
+            execution_time = (time.time() - start_time) * 1000
+            
             # 最終応答LLM情報を記録
-            executed_strategy.final_response_llm_prompt = prompt
-            executed_strategy.final_response_llm_response = llm_response
+            executed_strategy.final_response_llm_prompt = combined_prompt
+            executed_strategy.final_response_llm_response = response
             executed_strategy.final_response_llm_execution_time_ms = execution_time
             return response
         
@@ -431,12 +458,19 @@ class AIAgent:
             results_summary=results_summary,
             total_execution_time=total_execution_time
         )
-
-        response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(system_prompt, "上記を基に回答してください。")
+        
+        # 責任分解: プロンプト結合は呼び出し側で実行
+        combined_prompt = f"{system_prompt}\n\n上記を基に回答してください。"
+        
+        # LLM呼び出し・情報記録
+        import time
+        start_time = time.time()
+        response = await self.call_claude(system_prompt, "上記を基に回答してください。")
+        execution_time = (time.time() - start_time) * 1000
         
         # 最終応答LLM情報を記録
-        executed_strategy.final_response_llm_prompt = prompt
-        executed_strategy.final_response_llm_response = llm_response
+        executed_strategy.final_response_llm_prompt = combined_prompt
+        executed_strategy.final_response_llm_response = response
         executed_strategy.final_response_llm_execution_time_ms = execution_time
         
         return response
