@@ -4,7 +4,6 @@ import time
 import logging
 from typing import Dict, Any
 from models import DetailedStrategy, DetailedStep
-from prompt_client import SystemPromptClient
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +16,6 @@ class StrategyEngine:
         self.available_tools = available_tools
         self.llm_util = llm_util
         self.enabled_tools = enabled_tools_ref  # ai_agent の enabled_tools を共有参照
-        
-        # SystemPrompt Management クライアント初期化
-        self.prompt_client = SystemPromptClient()
         
         # === 将来拡張用（現在は空実装） ===
         self.query_patterns = {}      # クエリパターン学習
@@ -35,20 +31,47 @@ class StrategyEngine:
         
         logger.info(f"[DEBUG] 戦略立案処理継続 - ツール有無に関わらず実行")
         
-        # SystemPrompt Management からベースプロンプトを取得
-        try:
-            base_prompt = self.prompt_client.get_prompt("strategy_planning")
-        except Exception as e:
-            logger.error(f"[DEBUG] SystemPrompt Management取得失敗: {e}")
-            # エラー時は戦略立案失敗として処理
-            strategy = DetailedStrategy(
-                steps=[],
-                parse_error=True,
-                strategy_llm_prompt="",
-                strategy_llm_response="",
-                strategy_llm_execution_time_ms=0
-            )
-            return strategy
+        # 戦略立案プロンプト（直接指定）
+        base_prompt = """あなたは戦略立案の専門家です。上記の利用可能ツールとユーザーリクエストを分析し、必要最小限のツールのみを選択してください。
+
+## 重要な判定ルール
+1. ユーザーが明示的に要求していない情報は取得しない
+2. 利用可能ツールの中から適切なものを選択する
+3. ツールが不要な場合は steps を空配列 [] にする
+4. 複数ツールの無駄な組み合わせを避ける
+
+## 判定の考え方
+- 情報要求の種類を特定する（商品情報、顧客情報、その他）
+- 利用可能ツールの説明文と照らし合わせる
+- 明示的に要求されていない情報は取得しない
+- 一般的な挨拶や質問にはツールは不要
+
+## 出力形式（必須）
+以下の形式の純粋なJSONのみを返してください。説明文・前置き・後置きは一切不要です。
+
+{{
+    "steps": [
+        {{"step": 1, "tool": "ツール名", "reason": "このツールを使う理由"}}
+    ]
+}}
+
+## 出力例
+情報取得が必要:
+{{"steps": [{{"step": 1, "tool": "search_products_flexible", "reason": "商品情報を検索するため"}}]}}
+
+複数ツール必要:
+{{"steps": [{{"step": 1, "tool": "tool_a", "reason": "基本情報取得"}}, {{"step": 2, "tool": "tool_b", "reason": "詳細情報取得"}}]}}
+
+ツール不要:
+{{"steps": []}}
+
+## 禁止事項
+- 明示的に要求されていない情報の取得禁止
+- 利用可能ツール以外の使用禁止
+- JSON以外のテキスト出力禁止
+- 説明文・コメント・前置き禁止
+
+利用可能ツールの中から、ユーザーが明示的に要求した情報のみを取得する最小限のツール選択をしてください。"""
         
         # ツール説明文を生成（ツールがない場合は明示）
         tools_description = "\n".join([
