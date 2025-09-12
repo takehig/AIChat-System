@@ -255,22 +255,22 @@ class AIAgent:
             for result in tool_results
         ])
         
-        # 動的システムプロンプト生成（ツール用に調整）
-        system_prompt = f"""証券会社の社内情報システムとして回答してください。
-
-ユーザーの質問: {user_message}
-
-実行したツール: {', '.join(tools_used) if tools_used else 'なし'}
-{f'実行に失敗したツール: {", ".join(tools_failed)}' if tools_failed else ''}
-
-実行結果:
-{tools_summary}
-
-回答要件:
-- 質問の意図に応じて適切に回答
-- 使用したツール名を回答の最後に明記: 「※使用ツール: {', '.join(tools_used)}」
-- 過度に営業的にならず、事実ベースで回答
-{f'- 失敗したツールがある場合は、その旨を説明' if tools_failed else ''}"""
+        # SystemPrompt Management からプロンプトテンプレート取得
+        tool_prompt_template = await get_prompt_from_management("tool_result_response_prompt")
+        
+        # 動的変数準備
+        tools_used_str = ', '.join(tools_used) if tools_used else 'なし'
+        tools_failed_text = f'実行に失敗したツール: {", ".join(tools_failed)}' if tools_failed else ''
+        tools_failed_requirement = '- 失敗したツールがある場合は、その旨を説明' if tools_failed else ''
+        
+        # 動的システムプロンプト生成
+        system_prompt = tool_prompt_template.format(
+            user_message=user_message,
+            tools_used=tools_used_str,
+            tools_failed_text=tools_failed_text,
+            tools_summary=tools_summary,
+            tools_failed_requirement=tools_failed_requirement
+        )
 
         return await self.call_claude(system_prompt, "上記を基に回答してください。")
     
