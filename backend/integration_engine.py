@@ -4,6 +4,7 @@ import time
 import logging
 from typing import Dict, Any, List
 from models import DetailedStrategy
+from system_prompts_api import get_system_prompt_by_key
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,16 @@ class IntegrationEngine:
             for step in executed_strategy.steps if step.output
         ])
         
-        # 戦略結果応答プロンプト
-        strategy_prompt_template = """証券会社の社内情報システムとして回答してください。
+        # SystemPrompt Management から戦略結果応答プロンプトを取得
+        try:
+            prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
+            strategy_prompt_template = prompt_data.get("prompt_text", "")
+            if not strategy_prompt_template:
+                raise Exception("プロンプトが空")
+        except Exception as e:
+            logger.error(f"SystemPrompt Management取得失敗: {e}")
+            # フォールバック: 直接プロンプト
+            strategy_prompt_template = """証券会社の社内情報システムとして回答してください。
 
 ユーザーの質問: {user_message}
 
