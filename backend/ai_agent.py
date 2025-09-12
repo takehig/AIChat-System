@@ -382,16 +382,25 @@ class AIAgent:
     async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
         """戦略実行結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
         
+        logger.info(f"[DEBUG] generate_contextual_response_with_strategy開始")
+        logger.info(f"[DEBUG] parse_error: {executed_strategy.parse_error}")
+        logger.info(f"[DEBUG] steps数: {len(executed_strategy.steps) if executed_strategy.steps else 0}")
+        logger.info(f"[DEBUG] is_executed: {executed_strategy.is_executed()}")
+        
         # 戦略立案エラー時は直接回答（ハルシネーション防止）
         if executed_strategy.parse_error:
+            logger.info(f"[DEBUG] 戦略立案エラー処理開始")
             direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            logger.info(f"[DEBUG] direct_prompt取得完了: {len(direct_prompt) if direct_prompt else 0}文字")
             response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(
                 direct_prompt, user_message
             )
+            logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, prompt長: {len(prompt)}")
             # 最終応答LLM情報を記録
             executed_strategy.final_response_llm_prompt = prompt
             executed_strategy.final_response_llm_response = llm_response
             executed_strategy.final_response_llm_execution_time_ms = execution_time
+            logger.info(f"[DEBUG] 最終応答LLM情報記録完了")
             return response
         
         # ツール未実行時も直接回答
