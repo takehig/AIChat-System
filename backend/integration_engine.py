@@ -7,13 +7,6 @@ from models import DetailedStrategy
 
 logger = logging.getLogger(__name__)
 
-# get_prompt_from_management は ai_agent.py で定義されているため、
-# 循環インポートを避けるため、呼び出し時に動的インポートを使用
-async def get_prompt_from_management(prompt_name: str) -> str:
-    """SystemPrompt Management からプロンプトを取得（動的インポート）"""
-    from ai_agent import get_prompt_from_management as get_prompt
-    return await get_prompt(prompt_name)
-
 class IntegrationEngine:
     """回答統合専用エンジン - 戦略実行結果から最終回答を生成"""
     
@@ -37,7 +30,7 @@ class IntegrationEngine:
             raise
     
     async def generate_contextual_response_with_strategy(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
-        """戦略実行結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
+        """戦略実行結果を含む動的応答生成"""
         
         logger.info(f"[DEBUG] generate_contextual_response_with_strategy開始")
         logger.info(f"[DEBUG] parse_error: {executed_strategy.parse_error}")
@@ -47,8 +40,8 @@ class IntegrationEngine:
         # 戦略立案エラー時は直接回答（ハルシネーション防止）
         if executed_strategy.parse_error:
             logger.info(f"[DEBUG] 戦略立案エラー処理開始")
-            direct_prompt = await get_prompt_from_management("direct_response_prompt")
-            logger.info(f"[DEBUG] direct_prompt取得完了: {len(direct_prompt) if direct_prompt else 0}文字")
+            direct_prompt = "証券会社の社内情報システムとして、質問に適切に回答してください。"
+            logger.info(f"[DEBUG] direct_prompt設定完了: {len(direct_prompt)}文字")
             
             # 責任分解: プロンプト結合は呼び出し側で実行
             combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
@@ -69,7 +62,7 @@ class IntegrationEngine:
         
         # ツール未実行時も直接回答
         if not executed_strategy.steps or not executed_strategy.is_executed():
-            direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            direct_prompt = "証券会社の社内情報システムとして、質問に適切に回答してください。"
             
             # 責任分解: プロンプト結合は呼び出し側で実行
             combined_prompt = f"{direct_prompt}\n\nユーザーの質問: {user_message}"
@@ -91,8 +84,20 @@ class IntegrationEngine:
             for step in executed_strategy.steps if step.output
         ])
         
-        # SystemPrompt Management からプロンプトテンプレート取得
-        strategy_prompt_template = await get_prompt_from_management("strategy_result_response_prompt")
+        # 戦略結果応答プロンプト
+        strategy_prompt_template = """証券会社の社内情報システムとして回答してください。
+
+ユーザーの質問: {user_message}
+
+実行結果:
+{results_summary}
+
+回答要件:
+- 質問の意図に応じて適切に回答
+- 実行した処理の流れを簡潔に説明
+- 最終的な結果を分かりやすく提示
+- 過度に営業的にならず、事実ベースで回答
+- 実行時間: {total_execution_time}ms"""
         
         # 動的システムプロンプト生成
         total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
