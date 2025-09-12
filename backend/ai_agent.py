@@ -164,7 +164,7 @@ class AIAgent:
             
             # 動的システムプロンプトで応答生成
             logger.info(f"[DEBUG] 応答生成開始")
-            response = await self.integration_engine.generate_contextual_response_with_strategy(
+            response = await self.integration_engine.generate_final_response(
                 user_message, executed_strategy
             )
             logger.info(f"[DEBUG] 応答生成完了 - 応答長: {len(response)}")
