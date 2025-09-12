@@ -241,12 +241,10 @@ class AIAgent:
         return merged_debug
     
     async def generate_contextual_response_with_tools(self, user_message: str, tool_results: list) -> str:
-        """ツール結果を含む動的応答生成"""
+        """ツール結果を含む動的応答生成（SystemPrompt Management v2.0.0対応）"""
         if not tool_results:
-            return await self.call_claude(
-                "証券会社の社内情報システムとして、質問に適切に回答してください。",
-                user_message
-            )
+            direct_prompt = await get_prompt_from_management("direct_response_prompt")
+            return await self.call_claude(direct_prompt, user_message)
         
         # 使用ツール情報を動的生成
         tools_used = [result["tool"] for result in tool_results if "result" in result]
@@ -257,7 +255,7 @@ class AIAgent:
             for result in tool_results
         ])
         
-        # 動的システムプロンプト生成
+        # 動的システムプロンプト生成（ツール用に調整）
         system_prompt = f"""証券会社の社内情報システムとして回答してください。
 
 ユーザーの質問: {user_message}
@@ -265,7 +263,7 @@ class AIAgent:
 実行したツール: {', '.join(tools_used) if tools_used else 'なし'}
 {f'実行に失敗したツール: {", ".join(tools_failed)}' if tools_failed else ''}
 
-ツール実行結果:
+実行結果:
 {tools_summary}
 
 回答要件:
