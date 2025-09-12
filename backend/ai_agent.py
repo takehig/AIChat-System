@@ -389,9 +389,9 @@ class AIAgent:
                 direct_prompt, user_message
             )
             # 最終応答LLM情報を記録
-            executed_strategy.final_llm_prompt = prompt
-            executed_strategy.final_llm_response = llm_response
-            executed_strategy.final_llm_execution_time_ms = execution_time
+            executed_strategy.final_response_llm_prompt = prompt
+            executed_strategy.final_response_llm_response = llm_response
+            executed_strategy.final_response_llm_execution_time_ms = execution_time
             return response
         
         # ツール未実行時も直接回答
@@ -401,9 +401,9 @@ class AIAgent:
                 direct_prompt, user_message
             )
             # 最終応答LLM情報を記録
-            executed_strategy.final_llm_prompt = prompt
-            executed_strategy.final_llm_response = llm_response
-            executed_strategy.final_llm_execution_time_ms = execution_time
+            executed_strategy.final_response_llm_prompt = prompt
+            executed_strategy.final_response_llm_response = llm_response
+            executed_strategy.final_response_llm_execution_time_ms = execution_time
             return response
         
         # 実行結果サマリー生成
@@ -426,8 +426,8 @@ class AIAgent:
         response, prompt, llm_response, execution_time = await self.llm_util.call_claude_with_llm_info(system_prompt, "上記を基に回答してください。")
         
         # 最終応答LLM情報を記録
-        executed_strategy.final_llm_prompt = prompt
-        executed_strategy.final_llm_response = llm_response
-        executed_strategy.final_llm_execution_time_ms = execution_time
+        executed_strategy.final_response_llm_prompt = prompt
+        executed_strategy.final_response_llm_response = llm_response
+        executed_strategy.final_response_llm_execution_time_ms = execution_time
         
         return response
