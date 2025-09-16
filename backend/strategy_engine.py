@@ -28,8 +28,8 @@ class StrategyEngine:
         return {name: info for name, info in self.available_tools.items() 
                 if name in self.enabled_tools}
     
-    async def plan_strategy(self, user_message: str) -> DetailedStrategy:
-        """戦略立案 - ユーザーメッセージから実行戦略を生成"""
+    async def plan_strategy(self, user_message: str, strategy: DetailedStrategy) -> None:
+        """戦略立案 - 既存オブジェクトに戦略情報を追加"""
         
         logger.info(f"[DEBUG] plan_strategy開始")
         logger.info(f"[DEBUG] available_tools keys: {list(self.available_tools.keys())}")
@@ -84,31 +84,29 @@ class StrategyEngine:
                 )
                 detailed_steps.append(detailed_step)
             
-            # DetailedStrategy 作成
-            strategy = DetailedStrategy(
-                steps=detailed_steps,
-                parse_error=False,
-                strategy_llm_prompt=system_prompt,
-                strategy_llm_response=response,
-                strategy_llm_execution_time_ms=execution_time
-            )
+            # 既存オブジェクトに戦略情報を追加
+            strategy.steps = detailed_steps
+            strategy.parse_error = False
+            strategy.strategy_llm_prompt = system_prompt
+            strategy.strategy_llm_response = response
+            strategy.strategy_llm_execution_time_ms = execution_time
             
-            logger.info(f"[DEBUG] DetailedStrategy作成完了 - steps数: {len(detailed_steps)}")
+            logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
             
         except json.JSONDecodeError as e:
             logger.error(f"[DEBUG] JSON解析エラー: {e}")
             logger.error(f"[DEBUG] 応答内容: {response}")
             
-            # 解析エラー時の戦略
-            strategy = DetailedStrategy(
-                steps=[],
-                parse_error=True,
-                strategy_llm_prompt=system_prompt,
-                strategy_llm_response=response,
-                strategy_llm_execution_time_ms=execution_time
-            )
+            # 解析エラー時の戦略情報を既存オブジェクトに設定
+            strategy.steps = []
+            strategy.parse_error = True
+            strategy.parse_error_message = str(e)
+            strategy.raw_response = response
+            strategy.strategy_llm_prompt = system_prompt
+            strategy.strategy_llm_response = response
+            strategy.strategy_llm_execution_time_ms = execution_time
         
         # LLM情報記録
         logger.info(f"[DEBUG] LLM情報記録完了 - prompt長: {len(system_prompt)}, response長: {len(response)}")
         
-        return strategy
+        # 戻り値なし（参照渡し）

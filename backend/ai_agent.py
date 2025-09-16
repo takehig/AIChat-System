@@ -142,31 +142,32 @@ class AIAgent:
         return False
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
-        """メッセージ処理（常に戦略立案・決定論的実行）"""
+        """メッセージ処理（参照渡し設計・段階的実行）"""
         
         # Try外側でインスタンス作成（エラー時情報保持のため）
-        executed_strategy = None
+        from models import DetailedStrategy
+        executed_strategy = DetailedStrategy(steps=[])
         
         try:
-            # 常に戦略立案実行（判断は strategy_engine に委譲）
+            # 段階1: 戦略立案
             logger.info(f"[DEBUG] 戦略立案開始")
-            strategy = await self.strategy_engine.plan_strategy(user_message)
-            logger.info(f"[DEBUG] 戦略立案完了 - steps: {len(strategy.steps)}")
-            logger.info(f"[DEBUG] 戦略立案LLM情報確認 - prompt存在: {strategy.strategy_llm_prompt is not None}")
-            if strategy.strategy_llm_prompt:
-                logger.info(f"[DEBUG] 戦略立案LLM情報 - prompt長: {len(strategy.strategy_llm_prompt)}, response長: {len(strategy.strategy_llm_response or '')}")
+            await self.strategy_engine.plan_strategy(user_message, executed_strategy)
+            logger.info(f"[DEBUG] 戦略立案完了 - steps: {len(executed_strategy.steps)}")
+            logger.info(f"[DEBUG] 戦略立案LLM情報確認 - prompt存在: {executed_strategy.strategy_llm_prompt is not None}")
+            if executed_strategy.strategy_llm_prompt:
+                logger.info(f"[DEBUG] 戦略立案LLM情報 - prompt長: {len(executed_strategy.strategy_llm_prompt)}, response長: {len(executed_strategy.strategy_llm_response or '')}")
             
             print(f"[AI_AGENT] === STRATEGY PLANNING ===")
-            print(f"[AI_AGENT] Steps: {len(strategy.steps)}")
-            if strategy.steps:
-                print(f"[AI_AGENT] Tools: {[step.tool for step in strategy.steps]}")
+            print(f"[AI_AGENT] Steps: {len(executed_strategy.steps)}")
+            if executed_strategy.steps:
+                print(f"[AI_AGENT] Tools: {[step.tool for step in executed_strategy.steps]}")
             
-            # 決定論的実行
+            # 段階2: 戦略実行
             logger.info(f"[DEBUG] 戦略実行開始")
-            executed_strategy = await self.execute_detailed_strategy(strategy, user_message)
+            await self.execute_detailed_strategy(executed_strategy, user_message)
             logger.info(f"[DEBUG] 戦略実行完了")
             
-            # 動的システムプロンプトで応答生成
+            # 段階3: 応答生成
             logger.info(f"[DEBUG] 応答生成開始")
             response = await self.integration_engine.generate_final_response(
                 user_message, executed_strategy
@@ -179,7 +180,7 @@ class AIAgent:
             return {
                 "message": response,
                 "strategy": executed_strategy,
-                "mcp_enabled": len(executed_strategy.steps) > 0  # 実際にツールを使ったかどうか
+                "mcp_enabled": len(executed_strategy.steps) > 0
             }
             
         except Exception as e:
@@ -187,7 +188,7 @@ class AIAgent:
             return {
                 "message": "申し訳ございません。処理中にエラーが発生しました。詳細はデバッグ情報をご確認ください。",
                 "strategy": executed_strategy,  # 途中まで実行された情報保持
-                "mcp_enabled": len(executed_strategy.steps) > 0 if executed_strategy else False,
+                "mcp_enabled": len(executed_strategy.steps) > 0,
                 "error": str(e)
             }
     
@@ -228,8 +229,8 @@ class AIAgent:
                     merged_debug[tool_name] = debug_info
         return merged_debug
     
-    async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> DetailedStrategy:
-        """戦略に基づく決定論的実行 - 同じオブジェクトに実行結果を埋め込み"""
+    async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> None:
+        """戦略に基づく決定論的実行 - 既存オブジェクトに実行結果を埋め込み"""
         current_input = user_message
         
         # 戦略立案エラーの場合は特別処理
@@ -268,7 +269,7 @@ class AIAgent:
             
             print(f"[AI_AGENT] Step {step.step} completed: {step.tool} ({step.execution_time_ms:.2f}ms)")
         
-        return strategy  # 実行結果が埋め込まれた同じオブジェクト
+        # 戻り値なし（参照渡し）
     
     async def execute_tool_directly(self, tool_name: str, tool_input: str) -> Dict[str, Any]:
         """ツールを直接実行"""
