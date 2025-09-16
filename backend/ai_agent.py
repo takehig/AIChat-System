@@ -143,6 +143,10 @@ class AIAgent:
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
         """メッセージ処理（常に戦略立案・決定論的実行）"""
+        
+        # Try外側でインスタンス作成（エラー時情報保持のため）
+        executed_strategy = None
+        
         try:
             # 常に戦略立案実行（判断は strategy_engine に委譲）
             logger.info(f"[DEBUG] 戦略立案開始")
@@ -181,9 +185,9 @@ class AIAgent:
         except Exception as e:
             logger.error(f"Message processing error: {e}")
             return {
-                "message": "申し訳ございません。処理中にエラーが発生しました。",
-                "tools_used": [],
-                "mcp_enabled": False,
+                "message": "申し訳ございません。処理中にエラーが発生しました。詳細はデバッグ情報をご確認ください。",
+                "strategy": executed_strategy,  # 途中まで実行された情報保持
+                "mcp_enabled": len(executed_strategy.steps) > 0 if executed_strategy else False,
                 "error": str(e)
             }
     
