@@ -16,8 +16,8 @@ class IntegrationEngine:
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         self.llm_util = llm_util
     
-    async def generate_final_response(self, user_message: str, executed_strategy: DetailedStrategy) -> str:
-        """最終応答生成"""
+    async def generate_final_response(self, user_message: str, executed_strategy: DetailedStrategy) -> None:
+        """最終応答生成 - 既存オブジェクトに応答情報を追加"""
         
         logger.info(f"[DEBUG] generate_final_response開始")
         logger.info(f"[DEBUG] parse_error: {executed_strategy.parse_error}")
@@ -51,8 +51,9 @@ class IntegrationEngine:
             executed_strategy.final_response_llm_prompt = combined_prompt
             executed_strategy.final_response_llm_response = response
             executed_strategy.final_response_llm_execution_time_ms = execution_time
+            executed_strategy.final_response = response  # 応答をオブジェクトに保存
             logger.info(f"[DEBUG] 最終応答LLM情報記録完了")
-            return response
+            return  # 戻り値なし（参照渡し）
         
         # ツール未実行時も直接回答
         if not executed_strategy.steps or not executed_strategy.is_executed():
@@ -73,7 +74,8 @@ class IntegrationEngine:
             executed_strategy.final_response_llm_prompt = combined_prompt
             executed_strategy.final_response_llm_response = response
             executed_strategy.final_response_llm_execution_time_ms = execution_time
-            return response
+            executed_strategy.final_response = response  # 応答をオブジェクトに保存
+            return  # 戻り値なし（参照渡し）
         
         # 実行結果サマリー生成
         results_summary = "\n\n".join([
@@ -104,5 +106,6 @@ class IntegrationEngine:
         executed_strategy.final_response_llm_prompt = system_prompt
         executed_strategy.final_response_llm_response = response
         executed_strategy.final_response_llm_execution_time_ms = execution_time
+        executed_strategy.final_response = response  # 応答をオブジェクトに保存
         
-        return response
+        # 戻り値なし（参照渡し）

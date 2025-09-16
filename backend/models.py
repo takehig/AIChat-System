@@ -48,6 +48,9 @@ class DetailedStrategy:
     final_response_llm_response: Optional[str] = None
     final_response_llm_execution_time_ms: Optional[float] = None
     
+    # 最終応答（参照渡し設計用）
+    final_response: Optional[str] = None
+    
     # パース情報
     parse_error: bool = False
     parse_error_message: Optional[str] = None
@@ -112,6 +115,7 @@ class DetailedStrategy:
             "final_response_llm_prompt": self.final_response_llm_prompt,
             "final_response_llm_response": self.final_response_llm_response,
             "final_response_llm_execution_time_ms": self.final_response_llm_execution_time_ms,
+            "final_response": self.final_response,
             "parse_error": self.parse_error,
             "parse_error_message": self.parse_error_message,
             "raw_response": self.raw_response,

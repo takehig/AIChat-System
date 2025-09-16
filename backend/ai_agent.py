@@ -169,16 +169,16 @@ class AIAgent:
             
             # 段階3: 応答生成
             logger.info(f"[DEBUG] 応答生成開始")
-            response = await self.integration_engine.generate_final_response(
+            await self.integration_engine.generate_final_response(
                 user_message, executed_strategy
             )
-            logger.info(f"[DEBUG] 応答生成完了 - 応答長: {len(response)}")
+            logger.info(f"[DEBUG] 応答生成完了 - 応答長: {len(executed_strategy.final_response or '')}")
             
             # 最終確認
             logger.info(f"[DEBUG] 最終戦略確認 - prompt存在: {executed_strategy.strategy_llm_prompt is not None}")
             
             return {
-                "message": response,
+                "message": executed_strategy.final_response or "応答生成に失敗しました",
                 "strategy": executed_strategy,
                 "mcp_enabled": len(executed_strategy.steps) > 0
             }
@@ -186,7 +186,7 @@ class AIAgent:
         except Exception as e:
             logger.error(f"Message processing error: {e}")
             return {
-                "message": "申し訳ございません。処理中にエラーが発生しました。詳細はデバッグ情報をご確認ください。",
+                "message": executed_strategy.final_response or "申し訳ございません。処理中にエラーが発生しました。詳細はデバッグ情報をご確認ください。",
                 "strategy": executed_strategy,  # 途中まで実行された情報保持
                 "mcp_enabled": len(executed_strategy.steps) > 0,
                 "error": str(e)
