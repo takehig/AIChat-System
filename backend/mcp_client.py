@@ -4,6 +4,7 @@ import httpx
 from httpx import TimeoutException
 from typing import Dict, Any, List, Optional
 import logging
+from config import TIMEOUT_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +30,23 @@ class MCPClient:
             "params": params or {}
         }
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        # グローバルタイムアウト設定使用
+        timeout = TIMEOUT_CONFIG["mcp_request_timeout"]
+        async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 response = await client.post(self.mcp_endpoint, json=request)
                 response.raise_for_status()
                 return response.json()
             except TimeoutException:
-                logger.error(f"MCP request failed: timeout")
-                return {"error": "MCP server timeout"}
+                logger.error(f"MCP request failed: timeout ({timeout}s)")
+                return {"error": f"MCP server timeout ({timeout}s)"}
             except Exception as e:
                 logger.error(f"MCP request failed: {e}")
                 return {"error": str(e)}
     
     async def health_check(self) -> bool:
         try:
+            # ヘルスチェックは短いタイムアウト
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(self.health_endpoint)
                 return response.status_code == 200
