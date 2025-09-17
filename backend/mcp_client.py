@@ -174,5 +174,3 @@ class MCPClient:
                 "error": f"MCP request failed: {str(e)}",
                 "debug_info": debug_info
             }
-                }
-            }
