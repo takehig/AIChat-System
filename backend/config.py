@@ -1,14 +1,5 @@
 # AIChat Backend Configuration
 
-# AIChat専用データベース設定（システムプロンプト管理）
-AICHAT_DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "database": "aichat",
-    "user": "aichat_user",
-    "password": "aichat123"
-}
-
 # Bedrock設定
 BEDROCK_CONFIG = {
     "region_name": "us-east-1",
@@ -20,4 +11,11 @@ SERVER_CONFIG = {
     "title": "AIChat Backend",
     "version": "2.0.0",
     "port": 8002
+}
+
+# タイムアウト設定
+TIMEOUT_CONFIG = {
+    "mcp_request_timeout": 60.0,      # MCP リクエストタイムアウト（秒）
+    "llm_request_timeout": 120.0,     # LLM処理タイムアウト（秒）
+    "bedrock_request_timeout": 90.0   # Bedrock APIタイムアウト（秒）
 }

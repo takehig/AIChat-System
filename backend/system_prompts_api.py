@@ -1,17 +1,25 @@
 # AIChat Backend - System Prompts API
 
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi import HTTPException
-from config import AICHAT_DB_CONFIG
 import logging
 
 logger = logging.getLogger(__name__)
 
 def get_aichat_db_connection():
-    """AIChat データベース接続を取得"""
+    """AIChat データベース接続を取得（.env から設定読み込み）"""
     try:
-        return psycopg2.connect(**AICHAT_DB_CONFIG)
+        # .env から設定読み込み
+        db_config = {
+            "host": os.getenv("DB_HOST", "localhost"),
+            "port": int(os.getenv("DB_PORT", "5432")),
+            "database": os.getenv("DB_NAME", "aichat"),
+            "user": os.getenv("DB_USER", "aichat_user"),
+            "password": os.getenv("DB_PASSWORD", "aichat123")
+        }
+        return psycopg2.connect(**db_config)
     except Exception as e:
         logger.error(f"AIChat database connection failed: {e}")
         raise
