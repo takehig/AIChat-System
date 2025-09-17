@@ -110,8 +110,12 @@ class IntegrationEngine:
             
             if not strategy_prompt_template:
                 logger.warning(f"[DEBUG] strategy_result_response_prompt が空 - フォールバック処理")
-                # フォールバックプロンプト
-                strategy_prompt_template = """あなたは証券会社の営業支援システムのAIエージェントです。実行された戦略の結果を基に、営業員に対して分かりやすく有用な回答を生成してください。
+                # フォールバックプロンプト（エラー情報含む）
+                strategy_prompt_template = """あなたは証券会社の営業支援システムのAIエージェントです。
+
+注意: システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした。フォールバック処理として基本的な応答を生成します。
+
+実行された戦略の結果を基に、営業員に対して分かりやすく有用な回答を生成してください。
 
 ユーザーの質問: {user_message}
 
@@ -126,8 +130,12 @@ class IntegrationEngine:
         except Exception as e:
             logger.error(f"[DEBUG] SystemPrompt取得エラー: {e}")
             logger.warning(f"[DEBUG] SystemPrompt取得失敗 - フォールバック処理")
-            # フォールバックプロンプト
-            strategy_prompt_template = """あなたは証券会社の営業支援システムのAIエージェントです。実行された戦略の結果を基に、営業員に対して分かりやすく有用な回答を生成してください。
+            # フォールバックプロンプト（エラー情報含む）
+            strategy_prompt_template = """あなたは証券会社の営業支援システムのAIエージェントです。
+
+注意: システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした（エラー発生）。フォールバック処理として基本的な応答を生成します。
+
+実行された戦略の結果を基に、営業員に対して分かりやすく有用な回答を生成してください。
 
 ユーザーの質問: {user_message}
 
