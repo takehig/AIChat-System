@@ -111,7 +111,7 @@ class IntegrationEngine:
             if not strategy_prompt_template:
                 logger.warning(f"[DEBUG] strategy_result_response_prompt が空 - フォールバック処理")
                 # フォールバックプロンプト（エラー情報のみ）
-                strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした。
+                strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした。サマリ作成時にこの事実を明示的に含めてください。
 
 ユーザーの質問: {user_message}
 
@@ -125,7 +125,7 @@ class IntegrationEngine:
             logger.error(f"[DEBUG] SystemPrompt取得エラー: {e}")
             logger.warning(f"[DEBUG] SystemPrompt取得失敗 - フォールバック処理")
             # フォールバックプロンプト（エラー情報のみ）
-            strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした（エラー発生）。
+            strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした（エラー発生）。サマリ作成時にこの事実を明示的に含めてください。
 
 ユーザーの質問: {user_message}
 
