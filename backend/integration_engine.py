@@ -105,13 +105,39 @@ class IntegrationEngine:
         try:
             prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
             logger.info(f"[DEBUG] SystemPrompt取得完了: {prompt_data is not None}")
-            strategy_prompt_template = prompt_data.get("prompt_text", "")
+            strategy_prompt_template = prompt_data.get("prompt_text", "") if prompt_data else ""
             logger.info(f"[DEBUG] strategy_prompt_template長さ: {len(strategy_prompt_template)}")
+            
             if not strategy_prompt_template:
-                raise Exception("strategy_result_response_prompt が空です")
+                logger.warning(f"[DEBUG] strategy_result_response_prompt が空 - フォールバック処理")
+                # フォールバックプロンプト
+                strategy_prompt_template = """あなたは証券会社の営業支援システムのAIエージェントです。実行された戦略の結果を基に、営業員に対して分かりやすく有用な回答を生成してください。
+
+ユーザーの質問: {user_message}
+
+実行結果:
+{results_summary}
+
+実行時間: {total_execution_time}ms
+
+取得した情報を整理し、営業活動に直接役立つ形で提示してください。"""
+                logger.info(f"[DEBUG] フォールバックプロンプト使用 - 長さ: {len(strategy_prompt_template)}")
+                
         except Exception as e:
             logger.error(f"[DEBUG] SystemPrompt取得エラー: {e}")
-            raise
+            logger.warning(f"[DEBUG] SystemPrompt取得失敗 - フォールバック処理")
+            # フォールバックプロンプト
+            strategy_prompt_template = """あなたは証券会社の営業支援システムのAIエージェントです。実行された戦略の結果を基に、営業員に対して分かりやすく有用な回答を生成してください。
+
+ユーザーの質問: {user_message}
+
+実行結果:
+{results_summary}
+
+実行時間: {total_execution_time}ms
+
+取得した情報を整理し、営業活動に直接役立つ形で提示してください。"""
+            logger.info(f"[DEBUG] フォールバックプロンプト使用 - 長さ: {len(strategy_prompt_template)}")
         
         # 動的システムプロンプト生成
         total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
