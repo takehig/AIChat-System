@@ -1,6 +1,7 @@
 import asyncio
 import json
 import httpx
+from httpx import TimeoutException
 from typing import Dict, Any, List, Optional
 import logging
 
@@ -33,6 +34,9 @@ class MCPClient:
                 response = await client.post(self.mcp_endpoint, json=request)
                 response.raise_for_status()
                 return response.json()
+            except TimeoutException:
+                logger.error(f"MCP request failed: timeout")
+                return {"error": "MCP server timeout"}
             except Exception as e:
                 logger.error(f"MCP request failed: {e}")
                 return {"error": str(e)}
