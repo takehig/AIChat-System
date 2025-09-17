@@ -174,19 +174,5 @@ class MCPClient:
                 "error": f"MCP request failed: {str(e)}",
                 "debug_info": debug_info
             }
-                "error": str(e),
-                "debug_info": {
-                    "request": {
-                        "tool_name": tool_name,
-                        "arguments": arguments,
-                        "server_url": self.server_url,
-                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                    },
-                    "response": {
-                        "processing_time_ms": processing_time,
-                        "status": "exception",
-                        "error_type": type(e).__name__,
-                        "error_message": str(e)
-                    }
                 }
             }
