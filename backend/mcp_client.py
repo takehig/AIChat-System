@@ -146,6 +146,11 @@ class MCPClient:
                 print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
                 return response
             else:
+                print(f"[MCP_CLIENT] === NO RESULT ERROR ===")
+                print(f"[MCP_CLIENT] MCP response keys: {list(mcp_dict.keys())}")
+                print(f"[MCP_CLIENT] Full MCP response: {mcp_dict}")
+                print(f"[MCP_CLIENT] Looking for 'result' key but not found")
+                
                 return {
                     "error": "Tool execution failed",
                     "debug_info": {
@@ -158,7 +163,9 @@ class MCPClient:
                         "response": {
                             "processing_time_ms": processing_time,
                             "status": "error",
-                            "error": "No result in response"
+                            "error": "No result in response",
+                            "mcp_response_keys": list(mcp_dict.keys()),
+                            "full_mcp_response": mcp_dict
                         }
                     }
                 }
