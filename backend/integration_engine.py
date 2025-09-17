@@ -78,16 +78,40 @@ class IntegrationEngine:
             return  # 戻り値なし（参照渡し）
         
         # 実行結果サマリー生成
-        results_summary = "\n\n".join([
-            f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
-            for step in executed_strategy.steps if step.output
-        ])
+        logger.info(f"[DEBUG] 実行結果サマリー生成開始")
+        logger.info(f"[DEBUG] steps数: {len(executed_strategy.steps)}")
+        
+        try:
+            # 各stepの詳細確認
+            for i, step in enumerate(executed_strategy.steps):
+                logger.info(f"[DEBUG] Step {i}: step={step.step}, tool={step.tool}, output存在={step.output is not None}")
+                if step.output is not None:
+                    logger.info(f"[DEBUG] Step {i} output type: {type(step.output)}")
+                    logger.info(f"[DEBUG] Step {i} output keys: {list(step.output.keys()) if isinstance(step.output, dict) else 'not dict'}")
+            
+            results_summary = "\n\n".join([
+                f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
+                for step in executed_strategy.steps if step.output
+            ])
+            logger.info(f"[DEBUG] 実行結果サマリー生成完了 - 長さ: {len(results_summary)}")
+            
+        except Exception as e:
+            logger.error(f"[DEBUG] 実行結果サマリー生成エラー: {e}")
+            logger.error(f"[DEBUG] エラー詳細: {type(e).__name__}")
+            raise
         
         # SystemPrompt Management から戦略結果応答プロンプトを取得
-        prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
-        strategy_prompt_template = prompt_data.get("prompt_text", "")
-        if not strategy_prompt_template:
-            raise Exception("strategy_result_response_prompt が空です")
+        logger.info(f"[DEBUG] SystemPrompt取得開始")
+        try:
+            prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
+            logger.info(f"[DEBUG] SystemPrompt取得完了: {prompt_data is not None}")
+            strategy_prompt_template = prompt_data.get("prompt_text", "")
+            logger.info(f"[DEBUG] strategy_prompt_template長さ: {len(strategy_prompt_template)}")
+            if not strategy_prompt_template:
+                raise Exception("strategy_result_response_prompt が空です")
+        except Exception as e:
+            logger.error(f"[DEBUG] SystemPrompt取得エラー: {e}")
+            raise
         
         # 動的システムプロンプト生成
         total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
