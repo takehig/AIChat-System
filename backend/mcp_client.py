@@ -102,6 +102,22 @@ class MCPClient:
         print(f"[MCP_CLIENT] Arguments: {arguments}")
         print(f"[MCP_CLIENT] Server URL: {self.server_url}")
         
+        # Try外で初期化（エラー時情報保持）
+        debug_info = {
+            "request": {
+                "tool_name": tool_name,
+                "arguments": arguments,
+                "server_url": self.server_url,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            },
+            "response": {
+                "processing_time_ms": None,
+                "request_id": None,
+                "status": None,
+                "tool_debug": None
+            }
+        }
+        
         try:
             params = {"name": tool_name, "arguments": arguments}
             print(f"[MCP_CLIENT] About to send request with params: {params}")
@@ -110,33 +126,17 @@ class MCPClient:
             
             print(f"[MCP_CLIENT] Request completed successfully")
             processing_time = round((time.time() - start_time) * 1000, 2)
+            debug_info["response"]["processing_time_ms"] = processing_time
+            debug_info["response"]["request_id"] = mcp_dict.get("id")
             
             print(f"[MCP_CLIENT] MCP server response: {mcp_dict}")
             
             if "result" in mcp_dict:
-                # debug_responseの確認
-                debug_response = mcp_dict.get("debug_response")
-                print(f"[MCP_CLIENT] debug_response from server: {debug_response}")
-                print(f"[MCP_CLIENT] debug_response type: {type(debug_response)}")
+                debug_info["response"]["status"] = "success"
+                debug_info["response"]["tool_debug"] = mcp_dict.get("debug_response")
                 
-                # debug_infoを統合形式で生成
-                debug_info = {
-                    "request": {
-                        "tool_name": tool_name,
-                        "arguments": arguments,
-                        "server_url": self.server_url,
-                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                    },
-                    "response": {
-                        "processing_time_ms": processing_time,
-                        "request_id": mcp_dict.get("id"),
-                        "status": "success",
-                        "tool_debug": debug_response
-                    }
-                }
-                
+                print(f"[MCP_CLIENT] debug_response from server: {debug_info['response']['tool_debug']}")
                 print(f"[MCP_CLIENT] Generated debug_info: {debug_info}")
-                print(f"[MCP_CLIENT] tool_debug in debug_info: {debug_info['response']['tool_debug']}")
                 
                 response = {
                     "result": mcp_dict["result"],
@@ -146,6 +146,9 @@ class MCPClient:
                 print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
                 return response
             else:
+                debug_info["response"]["status"] = "error"
+                debug_info["response"]["tool_debug"] = mcp_dict  # 統一スキーマ
+                
                 print(f"[MCP_CLIENT] === NO RESULT ERROR ===")
                 print(f"[MCP_CLIENT] MCP response keys: {list(mcp_dict.keys())}")
                 print(f"[MCP_CLIENT] Full MCP response: {mcp_dict}")
@@ -153,24 +156,14 @@ class MCPClient:
                 
                 return {
                     "error": "Tool execution failed",
-                    "debug_info": {
-                        "request": {
-                            "tool_name": tool_name,
-                            "arguments": arguments,
-                            "server_url": self.server_url,
-                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                        },
-                        "response": {
-                            "processing_time_ms": processing_time,
-                            "status": "error",
-                            "error": "No result in response",
-                            "mcp_response_keys": list(mcp_dict.keys()),
-                            "full_mcp_response": mcp_dict
-                        }
-                    }
+                    "debug_info": debug_info
                 }
         except Exception as e:
             processing_time = round((time.time() - start_time) * 1000, 2)
+            debug_info["response"]["processing_time_ms"] = processing_time
+            debug_info["response"]["status"] = "exception"
+            debug_info["response"]["tool_debug"] = {"error": str(e), "error_type": type(e).__name__}
+            
             print(f"[MCP_CLIENT] === CALL_TOOL ERROR ===")
             print(f"[MCP_CLIENT] Exception occurred: {e}")
             print(f"[MCP_CLIENT] Exception type: {type(e)}")
@@ -178,6 +171,9 @@ class MCPClient:
             print(f"[MCP_CLIENT] Traceback: {traceback.format_exc()}")
             
             return {
+                "error": f"MCP request failed: {str(e)}",
+                "debug_info": debug_info
+            }
                 "error": str(e),
                 "debug_info": {
                     "request": {
