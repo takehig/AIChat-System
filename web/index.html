@@ -365,7 +365,7 @@
                 }
                 
                 const controlsHtml = allTools.map(tool => {
-                    const iconClass = getToolIcon(tool.mcpName);
+                    const iconClass = getToolIcon(tool.name);  // tool.mcpName → tool.name に修正
                     const colorClass = getToolColor(tool.mcpName);
                     
                     return `
@@ -428,9 +428,15 @@
         };
 
         function getToolIcon(toolName) {
+            // デバッグ用ログ
+            console.log('[MCP DEBUG] getToolIcon called with:', toolName);
+            
             // 新方式: ツール名→システム種別→アイコン
             const systemType = MCP_TOOL_SYSTEM_MAP[toolName] || 'default';
-            return MCP_SYSTEM_ICONS[systemType] || MCP_SYSTEM_ICONS['default'];
+            const icon = MCP_SYSTEM_ICONS[systemType] || MCP_SYSTEM_ICONS['default'];
+            
+            console.log('[MCP DEBUG] toolName:', toolName, 'systemType:', systemType, 'icon:', icon);
+            return icon;
         }
         
         function getToolColor(toolName) {
