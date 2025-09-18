@@ -1,7 +1,36 @@
 from typing import Dict, List, Optional
 import logging
 from mcp_client import MCPClient
+
 logger = logging.getLogger(__name__)
+
+# MCPツール→システム種別マッピング辞書 (グローバル設定)
+MCP_TOOL_SYSTEM_MAP = {
+    # ProductMaster MCP ツール
+    'search_products_flexible': 'productmaster',
+    'get_product_details': 'productmaster', 
+    'get_all_products': 'productmaster',
+    'get_statistics': 'productmaster',
+    
+    # CRM MCP ツール
+    'search_customers': 'crm',
+    'get_customer_holdings': 'crm',
+    'search_customers_by_bond_maturity': 'crm',
+    
+    # 将来追加用 (例)
+    # 'get_market_data': 'market_data',
+    # 'get_news': 'news_system',
+}
+
+# システム種別→アイコンマッピング辞書 (グローバル設定)
+MCP_SYSTEM_ICONS = {
+    'productmaster': 'fa-box',      # 📦 商品管理
+    'crm': 'fa-users',              # 👥 顧客管理
+    'market_data': 'fa-chart-line', # 📈 市場データ (将来用)
+    'news_system': 'fa-newspaper',  # 📰 ニュース (将来用)
+    'default': 'fa-tool'            # 🔧 デフォルト
+}
+
 class MCPManager:
     def __init__(self):
         self.mcp_clients: Dict[str, MCPClient] = {}
@@ -41,6 +70,15 @@ class MCPManager:
                     logger.warning(f"⚠️ {config['name']} MCP health check failed")
             except Exception as e:
                 logger.error(f"❌ Failed to initialize {config['name']} MCP: {e}")
+    def get_tool_system_type(self, tool_name: str) -> str:
+        """ツール名からシステム種別を取得"""
+        return MCP_TOOL_SYSTEM_MAP.get(tool_name, 'default')
+    
+    def get_tool_icon(self, tool_name: str) -> str:
+        """ツール名からアイコンクラスを取得"""
+        system_type = self.get_tool_system_type(tool_name)
+        return MCP_SYSTEM_ICONS.get(system_type, MCP_SYSTEM_ICONS['default'])
+    
     def get_mcp_status(self, mcp_id: str = 'productmaster') -> dict:
         """MCP状態取得"""
         if mcp_id not in self.available_mcps:

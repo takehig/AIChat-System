@@ -404,12 +404,37 @@
             }
         }
         
+        // MCPツール→システム種別マッピング辞書
+        const MCP_TOOL_SYSTEM_MAP = {
+            // ProductMaster MCP ツール
+            'search_products_flexible': 'productmaster',
+            'get_product_details': 'productmaster', 
+            'get_all_products': 'productmaster',
+            'get_statistics': 'productmaster',
+            
+            // CRM MCP ツール
+            'search_customers': 'crm',
+            'get_customer_holdings': 'crm',
+            'search_customers_by_bond_maturity': 'crm',
+            
+            // 将来追加用 (例)
+            // 'get_market_data': 'market_data',
+            // 'get_news': 'news_system',
+        };
+
+        // システム種別→アイコンマッピング辞書
+        const MCP_SYSTEM_ICONS = {
+            'productmaster': 'fa-box',      // 📦 商品管理
+            'crm': 'fa-users',              // 👥 顧客管理
+            'market_data': 'fa-chart-line', // 📈 市場データ (将来用)
+            'news_system': 'fa-newspaper',  // 📰 ニュース (将来用)
+            'default': 'fa-tool'            // 🔧 デフォルト
+        };
+
         function getToolIcon(toolName) {
-            if (toolName.includes('product')) return 'fa-box';
-            if (toolName.includes('customer')) return 'fa-users';
-            if (toolName.includes('search')) return 'fa-search';
-            if (toolName.includes('statistics')) return 'fa-chart-bar';
-            return 'fa-tool';
+            // 新方式: ツール名→システム種別→アイコン
+            const systemType = MCP_TOOL_SYSTEM_MAP[toolName] || 'default';
+            return MCP_SYSTEM_ICONS[systemType] || MCP_SYSTEM_ICONS['default'];
         }
         
         function getToolColor(toolName) {
