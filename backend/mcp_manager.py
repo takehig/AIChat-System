@@ -6,16 +6,12 @@ logger = logging.getLogger(__name__)
 
 # MCPツール→システム種別マッピング辞書 (グローバル設定)
 MCP_TOOL_SYSTEM_MAP = {
-    # ProductMaster MCP ツール
-    'search_products_flexible': 'productmaster',
-    'get_product_details': 'productmaster', 
-    'get_all_products': 'productmaster',
-    'get_statistics': 'productmaster',
+    # ProductMaster MCP ツール (実際のツール名)
+    'get_product_details': 'productmaster',
     
-    # CRM MCP ツール
-    'search_customers': 'crm',
-    'get_customer_holdings': 'crm',
+    # CRM MCP ツール (実際のツール名)
     'search_customers_by_bond_maturity': 'crm',
+    'get_customer_holdings': 'crm',
     
     # 将来追加用 (例)
     # 'get_market_data': 'market_data',
