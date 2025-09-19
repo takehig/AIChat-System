@@ -45,9 +45,266 @@ return MCPResponse(
 )
 ```
 
-### 🎯 debug_response設計原則
+## 🎯 推奨デバッグ情報構造（最重要）
 
-#### **スキーマレス設計**
+### ✅ 標準debug_response構造
+```python
+debug_response = {
+    "function_name": "tool_function_name",
+    "input_params": {...},           # 入力パラメータ
+    "step1_xxx": {                   # 処理段階毎の情報
+        "llm_request": "...",        # LLMリクエスト（結合済み文字列）
+        "llm_response": "...",       # LLMレスポンス
+        "execution_time_ms": 123,    # 実行時間
+        "result": {...}              # 段階結果
+    },
+    "step2_xxx": {
+        "sql_query": "...",          # SQL実行の場合
+        "sql_parameters": [...],     # SQLパラメータ
+        "execution_time_ms": 45,
+        "result": {...}
+    },
+    "step3_xxx": {...},
+    "total_execution_time_ms": 1234, # 総実行時間
+    "error": None                    # エラー情報
+}
+```
+
+### ✅ Try外側でのデバッグ情報初期化（必須）
+```python
+async def mcp_tool_function(params):
+    start_total_time = time.time()
+    
+    # Try外側でデバッグ情報初期化（推奨構造）
+    debug_response = {
+        "function_name": "mcp_tool_function",
+        "input_params": params,
+        "step1_process": {
+            "llm_request": None,
+            "llm_response": None,
+            "execution_time_ms": 0,
+            "result": None
+        },
+        "step2_sql": {
+            "sql_query": None,
+            "sql_parameters": None,
+            "execution_time_ms": 0,
+            "result": None
+        },
+        "total_execution_time_ms": 0,
+        "error": None
+    }
+    
+    try:
+        # 処理実装...
+        return {"result": result, "debug_info": debug_response}
+    except Exception as e:
+        debug_response["error"] = str(e)
+        debug_response["total_execution_time_ms"] = int((time.time() - start_total_time) * 1000)
+        return {"error": f"処理中にエラーが発生しました: {str(e)}", "debug_info": debug_response}
+```
+
+## 🚨 MCPツール命名・説明ルール（重要）
+
+### ✅ ツール名命名規則
+- **簡潔性**: 機能が一目で分かる短い名前
+- **一貫性**: 動詞_対象_条件 パターン
+- **例**: `get_customers_by_product` (良い) vs `get_customers_by_product_text` (冗長)
+
+### ✅ 説明文ルール
+- **簡潔性**: 核心機能のみを1文で記述
+- **戦略性**: AIエージェントの判断に必要な情報のみ
+- **技術詳細禁止**: 処理段階・実装詳細は説明文に含めない
+
+```python
+# ✅ 良い説明文
+"description": "商品IDを含むテキストから該当商品の保有顧客リストを返すツール"
+
+# ❌ 悪い説明文（技術詳細含む）
+"description": "入力テキストから商品IDを抽出し、該当商品の保有顧客リストを返すツール。処理は3段階：1)LLMによるテキストからのID抽出、2)SQLによる顧客データ検索、3)LLMによる結果整形。"
+```
+
+## 🔧 AIChat統合必須手順
+
+### ✅ mcp_manager.py 辞書登録（必須）
+```python
+# backend/mcp_manager.py - 新ツール追加時は必ず登録
+MCP_TOOL_SYSTEM_MAP = {
+    # CRM MCP ツール
+    'search_customers_by_bond_maturity': 'crm',
+    'get_customer_holdings': 'crm',
+    'get_customers_by_product': 'crm',  # ← 新規追加時は必須
+}
+```
+
+### ✅ アイコン自動適用
+```python
+MCP_SYSTEM_ICONS = {
+    'productmaster': 'fa-box',      # 📦 商品管理
+    'crm': 'fa-users',              # 👥 顧客管理
+    'default': 'fa-tool'            # 🔧 デフォルト
+}
+```
+
+## 🎯 3段階LLM処理パターン（実装済み）
+
+### ✅ 標準3段階処理フロー
+```python
+# STEP 1: 非正規テキスト → パラメータ化（LLM）
+# STEP 2: パラメータ → SQL実行 → 構造化データ
+# STEP 3: 構造化データ → 整形された非正規テキスト（LLM）
+```
+
+### ✅ 実装例：商品保有顧客抽出ツール
+```python
+# CRM MCP: get_customers_by_product
+# SystemPrompts:
+# - customer_by_product_extract_ids     (STEP1: ID抽出)
+# - customer_by_product_format_results  (STEP3: 結果整形)
+
+# 処理フロー:
+# 入力: "検索結果: 2件\n1. Apple Inc. (ID: 6)\n2. Tesla Inc. (ID: 10)"
+# STEP1: [6, 10] 抽出
+# STEP2: SQL実行で顧客データ取得
+# STEP3: 商品別顧客リスト整形
+```
+
+## 🚨 SystemPrompt管理ルール（重要）
+
+### ✅ 日本語プロンプト登録の正しい方法
+```bash
+# 直接SQL方式（文字化けしない・CRLF改行）
+sudo -u postgres psql -d aichat -c "INSERT INTO system_prompts (prompt_key, prompt_text, created_at, updated_at) VALUES ('プロンプトキー', '日本語プロンプト内容\r\n\r\n## セクション\r\n内容', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+```
+
+### ❌ 避けるべき方法
+```bash
+# curl POST方式（文字化けする・LF改行）
+curl -X POST http://localhost:8007/create -d "prompt_key=test&prompt_text=日本語内容"
+```
+
+### ✅ プロンプトキー命名規則
+- **ツール固有**: `{ツール名}_{処理段階}` 形式
+- **例**: `customer_by_product_extract_ids`, `customer_by_product_format_results`
+
+## 🎯 データベース直接操作作法（必須）
+
+### ✅ 改行コード指定ルール
+- **CRLF使用**: `\r\n` でWindows互換改行
+- **エスケープ注意**: SSM経由では `\r\n` を直接指定（`\\r\\n` は二重エスケープで文字列化）
+- **ブラウザ表示**: CRLFで正常な改行表示
+
+### ✅ 文字エンコーディング対応
+- **直接SQL**: UTF-8で正常保存
+- **curl POST**: SystemPrompt Management側でエンコーディング問題発生
+- **ブラウザ登録**: UTF-8で正常保存
+
+### ✅ データベース操作の優先順位
+1. **ブラウザ登録**: 最も安全（UTF-8 + CRLF）
+2. **直接SQL**: 確実（UTF-8 + 指定改行コード）
+3. **curl POST**: 問題あり（文字化け + LF改行）
+
+## 🚨 エラーハンドリング設計原則（重要）
+
+### ✅ フォールバック処理禁止ルール
+- **🔥 勝手なフォールバック処理絶対禁止**: エラー時に勝手にフォールバック処理を追加してはならない
+- **🔥 「安全のため」フォールバック禁止**: 「安全のため」「念のため」を理由にしたフォールバック処理は一切禁止
+
+### ✅ 正しいエラーハンドリング
+```python
+except Exception as e:
+    debug_response["error"] = str(e)
+    debug_response["total_execution_time_ms"] = int((time.time() - start_total_time) * 1000)
+    return {"error": f"処理中にエラーが発生しました: {str(e)}", "debug_info": debug_response}
+```
+
+### ❌ 禁止されたフォールバック例
+```python
+# ❌ 禁止 - 勝手なフォールバック処理
+except Exception as e:
+    # 安全のためデフォルト値を返す ← 禁止
+    return {"result": "デフォルト結果", "debug_info": debug_response}
+```
+
+## 🎯 MCP開発標準手順
+
+### STEP 1: SystemPrompt作成
+```bash
+# 直接SQL方式でUTF-8・CRLF対応
+sudo -u postgres psql -d aichat -c "INSERT INTO system_prompts..."
+```
+
+### STEP 2: MCPツール実装
+```python
+# tools_config.json にツール定義追加
+# tools/{module}.py に実装
+# 推奨デバッグ構造準拠
+```
+
+### STEP 3: AIChat統合
+```python
+# mcp_manager.py 辞書登録（必須）
+MCP_TOOL_SYSTEM_MAP = {
+    'new_tool_name': 'system_type',
+}
+```
+
+### STEP 4: GitHub反映・デプロイ
+```bash
+# 各リポジトリでコミット・プッシュ
+# EC2でgit pull・サービス再起動
+```
+
+### STEP 5: 動作確認
+```bash
+# ツール一覧確認
+curl -s http://localhost:8004/mcp -d '{"method": "tools/list"}'
+# AIChat統合確認
+curl -s http://localhost/aichat/api/status
+```
+
+## 🎯 実装済みMCPツール一覧
+
+### ProductMaster MCP (Port 8003)
+- `get_product_details`: 商品詳細取得
+- `search_products_by_name_fuzzy`: 商品名曖昧検索
+
+### CRM MCP (Port 8004)
+- `search_customers_by_bond_maturity`: 債券満期顧客検索
+- `get_customer_holdings`: 顧客保有商品取得
+- `predict_cash_inflow_from_sales_notes`: 営業メモ入金予測
+- `get_customers_by_product`: 商品保有顧客抽出 ← 新規実装
+
+## 🚨 重要な禁止事項
+
+### ファイル管理
+- **🔥 別名ファイル作成絶対禁止**: `main_new.py`, `test_*.py` 等の別名ファイル作成禁止
+- **🔥 バックアップファイル禁止**: `*.backup`, `*.old` 等のバックアップファイル作成禁止
+
+### データベース管理
+- **🔥 データベース設定変更禁止**: PostgreSQLのユーザー・パスワード変更禁止
+- **🔥 ALTER USER実行禁止**: データベース側設定変更は一切禁止
+
+### 独断専行防止
+- **🔥 エラー時の勝手な対処禁止**: ユーザーの許可なく勝手に「修正」してはならない
+- **🔥 設定ファイル勝手変更禁止**: 認証情報、設定値を独断で変更禁止
+
+## 🎯 今後の拡張予定
+
+### 計画中のMCPツール
+- **MarketData MCP**: 市場データ取得・分析
+- **News MCP**: ニュース情報取得・要約
+- **Risk MCP**: リスク分析・評価
+
+### 拡張アーキテクチャの利点
+- **統一インターフェース**: 全MCPで共通のデバッグ構造
+- **簡単拡張**: 新MCPツール追加が容易
+- **保守性**: 標準化されたコード構造
+- **デバッグ性**: 完全なトレーサビリティ
+
+---
+
+**この設計書に従うことで、一貫性のある高品質なMCPツールの開発・運用が可能になります。**
 - **柔軟性**: ツール毎に異なるデバッグ情報構造を許可
 - **拡張性**: 新しいデバッグ情報を自由に追加可能
 - **統一性**: 基本的なフィールド（function_name, execution_time_ms等）は統一
