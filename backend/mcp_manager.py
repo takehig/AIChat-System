@@ -149,6 +149,17 @@ class MCPManager:
                 self.enabled_tools.add(tool_name)
                 return True
         return False
+    
+    def get_tool_status(self, tool_name: str) -> bool:
+        """個別ツールの状態取得"""
+        return tool_name in self.enabled_tools
+        
+    def get_all_tools_status(self) -> Dict[str, bool]:
+        """全ツールの状態取得"""
+        return {
+            tool_name: tool_name in self.enabled_tools 
+            for tool_name in self.available_tools.keys()
+        }
     async def process_with_mcp(self, message: str, mcp_id: str = 'productmaster'):
         """指定MCPでメッセージ処理"""
         import time

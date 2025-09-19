@@ -215,13 +215,14 @@ async def toggle_tool(tool_name: str):
     """個別ツールのON/OFF切り替え"""
     global ai_agent
     
-    if not ai_agent:
-        return {"status": "error", "message": "AI Agent not initialized"}
+    if not ai_agent or not hasattr(ai_agent, 'mcp_manager'):
+        return {"status": "error", "message": "MCP Manager not initialized"}
     
-    if tool_name not in ai_agent.available_tools:
+    # MCPManagerから直接ツール状態を取得・変更
+    if tool_name not in ai_agent.mcp_manager.available_tools:
         return {"status": "error", "message": f"Tool '{tool_name}' not found"}
     
-    enabled = ai_agent.toggle_tool(tool_name)
+    enabled = ai_agent.mcp_manager.toggle_tool(tool_name)
     logger.info(f"Tool {tool_name} {'enabled' if enabled else 'disabled'}")
     
     return {
@@ -244,12 +245,19 @@ async def get_mcp_tools():
             response = await client.get("http://localhost:8003/tools/descriptions")
             if response.status_code == 200:
                 productmaster_data = response.json()
-                # MCPManagerの状態を参照
-                productmaster_status = ai_agent.mcp_manager.get_mcp_status('productmaster') if ai_agent else {'enabled': False}
+                # 各ツールに個別の enabled 状態を設定
+                tools = productmaster_data.get("tools", [])
+                if ai_agent and hasattr(ai_agent, 'mcp_manager'):
+                    for tool in tools:
+                        tool["enabled"] = ai_agent.mcp_manager.get_tool_status(tool["name"])
+                else:
+                    for tool in tools:
+                        tool["enabled"] = False
+                        
                 tools_info["productmaster"] = {
                     "available": True,
-                    "enabled": productmaster_status['enabled'],
-                    "tools": productmaster_data.get("tools", [])
+                    "enabled": False,  # MCP単位は使用しない
+                    "tools": tools
                 }
             else:
                 raise Exception(f"HTTP {response.status_code}")
@@ -267,12 +275,19 @@ async def get_mcp_tools():
             response = await client.get("http://localhost:8004/tools/descriptions")
             if response.status_code == 200:
                 crm_data = response.json()
-                # MCPManagerの状態を参照
-                crm_status = ai_agent.mcp_manager.get_mcp_status('crm') if ai_agent else {'enabled': False}
+                # 各ツールに個別の enabled 状態を設定
+                tools = crm_data.get("tools", [])
+                if ai_agent and hasattr(ai_agent, 'mcp_manager'):
+                    for tool in tools:
+                        tool["enabled"] = ai_agent.mcp_manager.get_tool_status(tool["name"])
+                else:
+                    for tool in tools:
+                        tool["enabled"] = False
+                        
                 tools_info["crm"] = {
                     "available": True,
-                    "enabled": crm_status['enabled'],
-                    "tools": crm_data.get("tools", [])
+                    "enabled": False,  # MCP単位は使用しない
+                    "tools": tools
                 }
             else:
                 raise Exception(f"HTTP {response.status_code}")
