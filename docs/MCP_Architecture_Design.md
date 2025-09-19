@@ -171,6 +171,32 @@ MCP_SYSTEM_ICONS = {
 
 ## 🚨 SystemPrompt管理ルール（重要）
 
+### ✅ **SystemPrompt取得統一実装（最重要）**
+```python
+# 必須: 既存の統一実装を使用
+from utils.system_prompt import get_system_prompt
+
+# 統一API仕様
+# URL: http://localhost:8002/api/system-prompts/{prompt_key}
+# ライブラリ: httpx
+# 実装場所: utils/system_prompt.py
+
+# 正しい使用方法
+system_prompt = await get_system_prompt("prompt_key")
+
+# 禁止事項
+❌ 独自のget_system_prompt関数作成禁止
+❌ aiohttp等の別ライブラリ使用禁止  
+❌ 直接SystemPrompt Management API呼び出し禁止
+❌ 直接データベースアクセス禁止
+```
+
+### ✅ **新ライブラリ使用時の確認ルール（必須）**
+1. **既存実装確認**: 同じ機能の既存実装がないか必ず確認
+2. **utils/ディレクトリ確認**: 共通ライブラリが存在しないか確認
+3. **統一性確認**: 他のMCPツールでの実装方法を確認
+4. **事前相談**: 新ライブラリ使用前にユーザーに確認
+
 ### ✅ 日本語プロンプト登録の正しい方法
 ```bash
 # 直接SQL方式（文字化けしない・CRLF改行）
@@ -227,6 +253,15 @@ except Exception as e:
 ```
 
 ## 🎯 MCP開発標準手順
+
+### STEP 0: 既存実装確認（必須）
+```python
+# 新ツール開発前に必ず確認
+1. utils/ ディレクトリの共通ライブラリ確認
+2. 他のMCPツールでの実装方法確認
+3. 統一実装の存在確認
+4. 新ライブラリ使用前のユーザー相談
+```
 
 ### STEP 1: SystemPrompt作成
 ```bash
