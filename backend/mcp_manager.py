@@ -91,6 +91,10 @@ class MCPManager:
             'enabled': self.mcp_status.get(mcp_id, False)
         }
     def set_mcp_enabled(self, mcp_id: str, enabled: bool) -> dict:
+        """MCP有効/無効設定"""
+        if mcp_id in self.mcp_status:
+            self.mcp_status[mcp_id] = enabled
+        return self.get_mcp_status(mcp_id)
 
     def toggle_mcp(self, mcp_id: str) -> bool:
         """MCP状態切り替え"""
