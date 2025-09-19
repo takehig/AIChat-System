@@ -173,7 +173,7 @@ class AIAgent:
                 continue
             
             mcp_server_name = self.available_tools[tool_name]['mcp_server']
-            client = self.mcp_clients[mcp_server_name]
+            client = self.mcp_manager.mcp_clients[mcp_server_name]
             
             try:
                 if await client.health_check():
@@ -248,7 +248,7 @@ class AIAgent:
             return {"error": f"Tool '{tool_name}' not enabled"}
         
         mcp_server_name = self.available_tools[tool_name]['mcp_server']
-        client = self.mcp_clients[mcp_server_name]
+        client = self.mcp_manager.mcp_clients[mcp_server_name]
         
         try:
             if await client.health_check():
