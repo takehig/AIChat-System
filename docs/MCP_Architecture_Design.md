@@ -191,6 +191,38 @@ system_prompt = await get_system_prompt("prompt_key")
 ❌ 直接データベースアクセス禁止
 ```
 
+### ✅ **LLM呼び出し統一実装（最重要）**
+```python
+# 必須: 既存の統一実装を使用
+from utils.llm_util import llm_util
+
+# 統一API仕様
+# モデル: anthropic.claude-3-sonnet-20240229-v1:0
+# ライブラリ: boto3
+# 実装場所: utils/llm_util.py
+
+# 正しい使用方法
+response = await llm_util.call_claude(system_prompt, user_input)
+
+# 禁止事項
+❌ 独自のLLM呼び出し関数作成禁止
+❌ boto3直接使用禁止
+❌ aiohttp等の別ライブラリ使用禁止
+❌ 直接Bedrock API呼び出し禁止
+```
+
+### ✅ **utils/ディレクトリ使用義務（最重要）**
+```python
+# 必須: utils/ ディレクトリの共通ライブラリ確認・使用
+- utils/system_prompt.py: SystemPrompt取得
+- utils/llm_util.py: LLM呼び出し
+- utils/database.py: データベース接続
+
+# 禁止: 同じ機能の独自実装
+❌ 既存機能の独自実装禁止
+❌ 重複ライブラリ作成禁止
+```
+
 ### ✅ **新ライブラリ使用時の確認ルール（必須）**
 1. **既存実装確認**: 同じ機能の既存実装がないか必ず確認
 2. **utils/ディレクトリ確認**: 共通ライブラリが存在しないか確認
@@ -258,9 +290,17 @@ except Exception as e:
 ```python
 # 新ツール開発前に必ず確認
 1. utils/ ディレクトリの共通ライブラリ確認
+   - utils/system_prompt.py: SystemPrompt取得
+   - utils/llm_util.py: LLM呼び出し
+   - utils/database.py: データベース接続
 2. 他のMCPツールでの実装方法確認
 3. 統一実装の存在確認
 4. 新ライブラリ使用前のユーザー相談
+
+# 禁止事項
+❌ utils/ 確認なしでの開発開始禁止
+❌ 既存実装確認なしでの独自実装禁止
+❌ 統一実装があるのに独自実装作成禁止
 ```
 
 ### STEP 1: SystemPrompt作成
