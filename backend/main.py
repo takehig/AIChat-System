@@ -7,6 +7,7 @@ import json
 import os
 import logging
 import httpx
+import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from ai_agent import AIAgent
