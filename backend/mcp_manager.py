@@ -14,6 +14,7 @@ MCP_TOOL_SYSTEM_MAP = {
     'search_customers_by_bond_maturity': 'crm',
     'get_customer_holdings': 'crm',
     'predict_cash_inflow_from_sales_notes': 'crm',
+    'get_customers_by_product': 'crm',
     
     # 将来追加用 (例)
     # 'get_market_data': 'market_data',
