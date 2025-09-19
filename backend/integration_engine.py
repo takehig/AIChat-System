@@ -135,7 +135,7 @@ class IntegrationEngine:
 実行時間: {total_execution_time}ms"""
             logger.info(f"[DEBUG] フォールバックプロンプト使用 - 長さ: {len(strategy_prompt_template)}")
         
-        # 動的システムプロンプト生成
+        # 追記型プロンプト生成（プレースホルダー廃止）
         total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
         
         # 使用されたツール一覧生成
@@ -146,25 +146,26 @@ class IntegrationEngine:
         failed_tools = [step.tool for step in executed_strategy.steps if step.tool and not step.output]
         tools_failed_text = f"失敗したツール: {', '.join(failed_tools)}" if failed_tools else ""
         
-        # プロンプトテンプレート変数辞書（安全化）
-        template_vars = {
-            'user_message': user_message,
-            'results_summary': results_summary,
-            'total_execution_time': total_execution_time,
-            'tools_used': tools_used_text,
-            'tools_failed_text': tools_failed_text,
-            'tools_summary': results_summary  # tools_summaryのエイリアス
-        }
+        # ベースプロンプトから追記型プロンプト構築
+        system_prompt = strategy_prompt_template
         
-        # 安全なformat実行（未定義変数は空文字で置換）
-        try:
-            system_prompt = strategy_prompt_template.format(**template_vars)
-        except KeyError as e:
-            logger.warning(f"[DEBUG] プロンプトテンプレートに未定義変数: {e}")
-            # 未定義変数を空文字で置換して再実行
-            import re
-            system_prompt = re.sub(r'\{[^}]+\}', '', strategy_prompt_template)
-            system_prompt = system_prompt.format(**{k: v for k, v in template_vars.items() if k in system_prompt})
+        # ユーザーの質問を追記
+        system_prompt += f"\n\nユーザーの質問: {user_message}"
+        
+        # 実行したツールを追記
+        system_prompt += f"\n\n実行したツール: {tools_used_text}"
+        
+        # 失敗したツール情報を追記（存在する場合のみ）
+        if tools_failed_text:
+            system_prompt += f"\n\n{tools_failed_text}"
+        
+        # 実行結果を追記
+        system_prompt += f"\n\n実行結果:\n{results_summary}"
+        
+        # 実行時間を追記
+        system_prompt += f"\n\n実行時間: {total_execution_time}ms"
+        
+        logger.info(f"[DEBUG] 追記型プロンプト生成完了 - 長さ: {len(system_prompt)}")
         
         # LLM呼び出し・情報記録
         start_time = time.time()
