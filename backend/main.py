@@ -84,7 +84,7 @@ async def chat(request: ChatRequest):
         conversation_context = conversation_manager.get_conversation_context(session_id)
         
         # 会話履歴を含めたメッセージを作成
-        enhanced_message = conversation_context + request.message if conversation_context else request.message
+        enhanced_message = conversation_context + "## 今回の質問\n" + request.message if conversation_context else request.message
         
         logger.info(f"Processing message: {request.message[:50]}...")
         if conversation_context:
