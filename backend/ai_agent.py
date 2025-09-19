@@ -50,22 +50,23 @@ class AIAgent:
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         
-        # 複数MCPクライアント
-        self.mcp_clients = {
-            'productmaster': MCPClient("http://localhost:8003"),
-            'crm': MCPClient("http://localhost:8004")
-        }
-        self.mcp_available = False
+        # MCPManager統合（状態管理を委譲）
+        from mcp_manager import MCPManager
+        self.mcp_manager = MCPManager()
         
-        # ツール個別管理
-        self.available_tools = {}  # ツール名 -> ツール情報
-        self.enabled_tools = set()  # 有効ツール一覧
+        # レガシー互換性（段階的移行のため）
+        self.mcp_available = False
         
         # LLMユーティリティ初期化
         self.llm_util = LLMUtil(self.bedrock_client, self.model_id)
         
-        # エンジン統合
-        self.strategy_engine = StrategyEngine(self.bedrock_client, self.available_tools, self.llm_util, self.enabled_tools)
+        # エンジン統合（MCPManagerの参照を渡す）
+        self.strategy_engine = StrategyEngine(
+            self.bedrock_client, 
+            self.mcp_manager.available_tools,  # MCPManagerの辞書を参照
+            self.llm_util, 
+            self.mcp_manager.enabled_tools     # MCPManagerのsetを参照
+        )
         self.integration_engine = IntegrationEngine(self.bedrock_client, self.llm_util)
         self.mcp_executor = MCPExecutor()
     
@@ -131,15 +132,8 @@ class AIAgent:
         }
     
     def toggle_tool(self, tool_name: str) -> bool:
-        """ツールの有効/無効を切り替え"""
-        if tool_name in self.available_tools:
-            if tool_name in self.enabled_tools:
-                self.enabled_tools.remove(tool_name)
-                return False
-            else:
-                self.enabled_tools.add(tool_name)
-                return True
-        return False
+        """ツールの有効/無効を切り替え（MCPManagerに委譲）"""
+        return self.mcp_manager.toggle_tool(tool_name)
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
         """メッセージ処理（参照渡し設計・段階的実行）"""

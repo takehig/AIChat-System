@@ -244,9 +244,11 @@ async def get_mcp_tools():
             response = await client.get("http://localhost:8003/tools/descriptions")
             if response.status_code == 200:
                 productmaster_data = response.json()
+                # MCPManagerの状態を参照
+                productmaster_status = ai_agent.mcp_manager.get_mcp_status('productmaster') if ai_agent else {'enabled': False}
                 tools_info["productmaster"] = {
                     "available": True,
-                    "enabled": ai_agent.mcp_available if ai_agent else False,
+                    "enabled": productmaster_status['enabled'],
                     "tools": productmaster_data.get("tools", [])
                 }
             else:
@@ -265,9 +267,11 @@ async def get_mcp_tools():
             response = await client.get("http://localhost:8004/tools/descriptions")
             if response.status_code == 200:
                 crm_data = response.json()
+                # MCPManagerの状態を参照
+                crm_status = ai_agent.mcp_manager.get_mcp_status('crm') if ai_agent else {'enabled': False}
                 tools_info["crm"] = {
                     "available": True,
-                    "enabled": any(tool["name"] in ai_agent.enabled_tools for tool in crm_data.get("tools", [])),
+                    "enabled": crm_status['enabled'],
                     "tools": crm_data.get("tools", [])
                 }
             else:

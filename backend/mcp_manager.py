@@ -32,6 +32,12 @@ class MCPManager:
     def __init__(self):
         self.mcp_clients: Dict[str, MCPClient] = {}
         self.mcp_status: Dict[str, bool] = {"productmaster": False, "crm": False}
+        
+        # ツール単位の状態管理（ai_agent.pyから移行）
+        self.available_tools: Dict[str, dict] = {}  # ツール名 -> ツール情報
+        self.enabled_tools: set = set()  # 有効ツール一覧
+        self.tool_routing: Dict[str, str] = {}  # ツール名 -> MCP名
+        
         self.available_mcps: Dict[str, dict] = {
         'crm': {
             'name': 'CRM',
@@ -102,6 +108,43 @@ class MCPManager:
             mcp_id: self.get_mcp_status(mcp_id)
             for mcp_id in self.available_mcps.keys()
         }
+    
+    # ツール管理メソッド（ai_agent.pyから移行）
+    async def discover_available_tools(self):
+        """全MCPサーバーからツール情報を収集"""
+        self.available_tools.clear()
+        self.tool_routing.clear()
+        self.enabled_tools.clear()  # 初期化時は全て無効
+        
+        for mcp_name, client in self.mcp_clients.items():
+            try:
+                if await client.health_check():
+                    tools_response = await client.get_tool_descriptions()
+                    if tools_response and "tools" in tools_response:
+                        for tool in tools_response["tools"]:
+                            tool_name = tool["name"]
+                            self.available_tools[tool_name] = {
+                                'mcp_server': mcp_name,
+                                'description': tool.get('description', ''),
+                                'usage_context': tool.get('usage_context', ''),
+                                'parameters': tool.get('parameters', {})
+                            }
+                            self.tool_routing[tool_name] = mcp_name
+                            # 🔑 修正: 自動有効化を削除（初期設定に従う）
+                            logger.info(f"Discovered tool: {tool_name} from {mcp_name}")
+            except Exception as e:
+                logger.error(f"Failed to discover tools from {mcp_name}: {e}")
+    
+    def toggle_tool(self, tool_name: str) -> bool:
+        """ツールの有効/無効を切り替え（ai_agent.pyから移行）"""
+        if tool_name in self.available_tools:
+            if tool_name in self.enabled_tools:
+                self.enabled_tools.remove(tool_name)
+                return False
+            else:
+                self.enabled_tools.add(tool_name)
+                return True
+        return False
     async def process_with_mcp(self, message: str, mcp_id: str = 'productmaster'):
         """指定MCPでメッセージ処理"""
         import time
