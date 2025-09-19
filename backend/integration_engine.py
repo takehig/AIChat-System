@@ -110,62 +110,54 @@ class IntegrationEngine:
             
             if not strategy_prompt_template:
                 logger.warning(f"[DEBUG] tool_result_response_prompt が空 - フォールバック処理")
-                # フォールバックプロンプト（エラー情報のみ）
-                strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした。サマリ作成時にこの事実を明示的に含めてください。
-
-ユーザーの質問: {user_message}
-
-実行結果:
-{results_summary}
-
-実行時間: {total_execution_time}ms"""
+                # フォールバックプロンプト（プレースホルダーなし）
+                strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした。サマリ作成時にこの事実を明示的に含めてください。"""
                 logger.info(f"[DEBUG] フォールバックプロンプト使用 - 長さ: {len(strategy_prompt_template)}")
                 
         except Exception as e:
             logger.error(f"[DEBUG] SystemPrompt取得エラー: {e}")
             logger.warning(f"[DEBUG] SystemPrompt取得失敗 - フォールバック処理")
-            # フォールバックプロンプト（エラー情報のみ）
-            strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした（エラー発生）。サマリ作成時にこの事実を明示的に含めてください。
-
-ユーザーの質問: {user_message}
-
-実行結果:
-{results_summary}
-
-実行時間: {total_execution_time}ms"""
+            # フォールバックプロンプト（プレースホルダーなし）
+            strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした（エラー発生）。サマリ作成時にこの事実を明示的に含めてください。"""
             logger.info(f"[DEBUG] フォールバックプロンプト使用 - 長さ: {len(strategy_prompt_template)}")
         
-        # 追記型プロンプト生成（プレースホルダー廃止）
-        total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
+        # 共通の追記処理関数
+        def build_final_prompt(base_prompt: str, user_message: str, results_summary: str, executed_strategy) -> str:
+            """フォールバック・正常系共通の追記処理"""
+            total_execution_time = sum(s.execution_time_ms or 0 for s in executed_strategy.steps)
+            
+            # 使用されたツール一覧生成
+            tools_used = [step.tool for step in executed_strategy.steps if step.tool]
+            tools_used_text = ", ".join(tools_used) if tools_used else "なし"
+            
+            # 失敗したツール情報生成
+            failed_tools = [step.tool for step in executed_strategy.steps if step.tool and not step.output]
+            tools_failed_text = f"失敗したツール: {', '.join(failed_tools)}" if failed_tools else ""
+            
+            # ベースプロンプトから追記型プロンプト構築
+            system_prompt = base_prompt
+            
+            # ユーザーの質問を追記
+            system_prompt += f"\n\nユーザーの質問: {user_message}"
+            
+            # 実行したツールを追記
+            system_prompt += f"\n\n実行したツール: {tools_used_text}"
+            
+            # 失敗したツール情報を追記（存在する場合のみ）
+            if tools_failed_text:
+                system_prompt += f"\n\n{tools_failed_text}"
+            
+            # 実行結果を追記
+            system_prompt += f"\n\n実行結果:\n{results_summary}"
+            
+            # 実行時間を追記
+            system_prompt += f"\n\n実行時間: {total_execution_time}ms"
+            
+            return system_prompt
         
-        # 使用されたツール一覧生成
-        tools_used = [step.tool for step in executed_strategy.steps if step.tool]
-        tools_used_text = ", ".join(tools_used) if tools_used else "なし"
-        
-        # 失敗したツール情報生成
-        failed_tools = [step.tool for step in executed_strategy.steps if step.tool and not step.output]
-        tools_failed_text = f"失敗したツール: {', '.join(failed_tools)}" if failed_tools else ""
-        
-        # ベースプロンプトから追記型プロンプト構築
-        system_prompt = strategy_prompt_template
-        
-        # ユーザーの質問を追記
-        system_prompt += f"\n\nユーザーの質問: {user_message}"
-        
-        # 実行したツールを追記
-        system_prompt += f"\n\n実行したツール: {tools_used_text}"
-        
-        # 失敗したツール情報を追記（存在する場合のみ）
-        if tools_failed_text:
-            system_prompt += f"\n\n{tools_failed_text}"
-        
-        # 実行結果を追記
-        system_prompt += f"\n\n実行結果:\n{results_summary}"
-        
-        # 実行時間を追記
-        system_prompt += f"\n\n実行時間: {total_execution_time}ms"
-        
-        logger.info(f"[DEBUG] 追記型プロンプト生成完了 - 長さ: {len(system_prompt)}")
+        # 共通処理でプロンプト構築
+        system_prompt = build_final_prompt(strategy_prompt_template, user_message, results_summary, executed_strategy)
+        logger.info(f"[DEBUG] 共通追記処理完了 - 長さ: {len(system_prompt)}")
         
         # LLM呼び出し・情報記録
         start_time = time.time()
