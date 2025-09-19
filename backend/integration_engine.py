@@ -103,13 +103,13 @@ class IntegrationEngine:
         # SystemPrompt Management から戦略結果応答プロンプトを取得
         logger.info(f"[DEBUG] SystemPrompt取得開始")
         try:
-            prompt_data = await get_system_prompt_by_key("strategy_result_response_prompt")
+            prompt_data = await get_system_prompt_by_key("tool_result_response_prompt")
             logger.info(f"[DEBUG] SystemPrompt取得完了: {prompt_data is not None}")
             strategy_prompt_template = prompt_data.get("prompt_text", "") if prompt_data else ""
             logger.info(f"[DEBUG] strategy_prompt_template長さ: {len(strategy_prompt_template)}")
             
             if not strategy_prompt_template:
-                logger.warning(f"[DEBUG] strategy_result_response_prompt が空 - フォールバック処理")
+                logger.warning(f"[DEBUG] tool_result_response_prompt が空 - フォールバック処理")
                 # フォールバックプロンプト（エラー情報のみ）
                 strategy_prompt_template = """システムプロンプト管理から実行結果サマリー生成用のプロンプトが取得できませんでした。サマリ作成時にこの事実を明示的に含めてください。
 
