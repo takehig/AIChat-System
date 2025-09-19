@@ -201,14 +201,30 @@ from utils.llm_util import llm_util
 # ライブラリ: boto3
 # 実装場所: utils/llm_util.py
 
-# 正しい使用方法
-response = await llm_util.call_claude(system_prompt, user_input)
+# 正しい使用方法（呼び出し元責任）
+system_prompt = await get_system_prompt("prompt_key")
+user_input_str = str(user_input)  # 呼び出し元でテキスト化
+response = await llm_util.call_claude(system_prompt, user_input_str)
+
+# 辞書オブジェクト対応（呼び出し元責任）
+if isinstance(text_input, dict):
+    if "text_input" in text_input:
+        text_input_str = text_input["text_input"]  # 辞書から文字列抽出
+    else:
+        text_input_str = str(text_input)           # 辞書全体を文字列化
+else:
+    text_input_str = str(text_input)               # 既に文字列の場合
+
+# プロンプト結合が必要な場合（呼び出し元責任）
+combined_prompt = f"{system_prompt}\n\n入力データ: {user_input_str}"
+response = await llm_util.call_claude(system_prompt, user_input_str)
 
 # 禁止事項
 ❌ 独自のLLM呼び出し関数作成禁止
 ❌ boto3直接使用禁止
 ❌ aiohttp等の別ライブラリ使用禁止
 ❌ 直接Bedrock API呼び出し禁止
+❌ utils/llm_util.py内でのテキスト化処理禁止（呼び出し元責任）
 ```
 
 ### ✅ **utils/ディレクトリ使用義務（最重要）**
@@ -314,6 +330,33 @@ sudo -u postgres psql -d aichat -c "INSERT INTO system_prompts..."
 # tools_config.json にツール定義追加
 # tools/{module}.py に実装
 # 推奨デバッグ構造準拠
+
+# LLM呼び出し実装（呼び出し元責任）
+from utils.llm_util import llm_util
+from utils.system_prompt import get_system_prompt
+
+async def your_function_text(text_input):
+    # 1. テキスト化処理（呼び出し元責任）
+    if isinstance(text_input, dict):
+        if "text_input" in text_input:
+            text_input_str = text_input["text_input"]  # 辞書から文字列抽出
+        else:
+            text_input_str = str(text_input)           # 辞書全体を文字列化
+    else:
+        text_input_str = str(text_input)               # 既に文字列の場合
+    
+    # 2. SystemPrompt取得
+    system_prompt = await get_system_prompt("your_prompt_key")
+    
+    # 3. LLM呼び出し（system + user分離）
+    response = await llm_util.call_claude(system_prompt, text_input_str)
+    
+    return MCPResponse(result=response)
+
+# 禁止事項
+❌ call_llm_simple使用禁止（call_claude使用）
+❌ テキスト化をutils/llm_util.py内で実装禁止
+❌ プロンプト結合をutils/llm_util.py内で実装禁止
 ```
 
 ### STEP 3: AIChat統合
