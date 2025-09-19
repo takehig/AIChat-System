@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 MCP_TOOL_SYSTEM_MAP = {
     # ProductMaster MCP ツール (実際のツール名)
     'get_product_details': 'productmaster',
+    'search_products_by_name_fuzzy': 'productmaster',
     
     # CRM MCP ツール (実際のツール名)
     'search_customers_by_bond_maturity': 'crm',
