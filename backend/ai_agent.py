@@ -71,58 +71,32 @@ class AIAgent:
         self.mcp_executor = MCPExecutor()
     
     async def initialize(self):
-        """AI Agent初期化"""
+        """AI Agent初期化（MCPManager使用）"""
         try:
-            available_count = 0
-            for name, client in self.mcp_clients.items():
-                try:
-                    if await client.health_check():
-                        if await client.initialize():
-                            await client.list_tools()
-                            available_count += 1
-                            logger.info(f"{name} MCP initialized")
-                        else:
-                            logger.warning(f"{name} MCP initialization failed")
-                    else:
-                        logger.warning(f"{name} MCP server not available")
-                except Exception as e:
-                    logger.error(f"{name} MCP initialization error: {e}")
+            # MCPManagerの初期化
+            await self.mcp_manager.initialize()
             
-            self.mcp_available = available_count > 0
+            # ツール情報を収集
+            await self.mcp_manager.discover_available_tools()
+            
+            # レガシー互換性
+            self.mcp_available = len(self.mcp_manager.mcp_clients) > 0
+            
             if self.mcp_available:
-                logger.info(f"MCP integration enabled ({available_count} servers)")
-                # ツール情報を収集
-                await self.discover_available_tools()
+                logger.info(f"MCP integration enabled ({len(self.mcp_manager.mcp_clients)} servers)")
         except Exception as e:
             logger.error(f"AI Agent initialization error: {e}")
     
-    async def discover_available_tools(self):
-        """全MCPサーバーからツール情報を収集"""
-        self.available_tools.clear()  # 既存辞書をクリア（参照は維持）
-        self.tool_routing = {}
-        
-        for mcp_name, client in self.mcp_clients.items():
-            try:
-                if await client.health_check():
-                    # ツール情報APIを呼び出し
-                    tools_response = await client.get_tool_descriptions()
-                    if tools_response and "tools" in tools_response:
-                        for tool in tools_response["tools"]:
-                            tool_name = tool["name"]
-                            self.available_tools[tool_name] = {
-                                'mcp_server': mcp_name,
-                                'description': tool.get('description', ''),
-                                'usage_context': tool.get('usage_context', ''),
-                                'parameters': tool.get('parameters', {})
-                            }
-                            self.tool_routing[tool_name] = mcp_name
-                            # 発見されたツールを自動的に有効化
-                            self.enabled_tools.add(tool_name)
-                            logger.info(f"Discovered tool: {tool_name} from {mcp_name}")
-            except Exception as e:
-                logger.error(f"Failed to discover tools from {mcp_name}: {e}")
-        
-        logger.info(f"Total tools discovered: {len(self.available_tools)}")
+    # レガシー互換性のためのプロパティ
+    @property
+    def available_tools(self):
+        """MCPManagerの available_tools を参照"""
+        return self.mcp_manager.available_tools
+    
+    @property
+    def enabled_tools(self):
+        """MCPManagerの enabled_tools を参照"""
+        return self.mcp_manager.enabled_tools
     
     def get_enabled_tools(self):
         """有効なツールのみ返す"""
