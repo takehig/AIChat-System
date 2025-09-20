@@ -65,7 +65,7 @@ class AIAgent:
             self.bedrock_client, 
             self.mcp_manager.available_tools,  # MCPManagerの辞書を参照
             self.llm_util, 
-            self.mcp_manager.enabled_tools     # MCPManagerのsetを参照
+            self.mcp_manager.available_tools   # MCPManagerの辞書を参照
         )
         self.integration_engine = IntegrationEngine(self.bedrock_client, self.llm_util)
         self.mcp_executor = MCPExecutor()
@@ -95,15 +95,12 @@ class AIAgent:
     
     @property
     def enabled_tools(self):
-        """MCPManagerの enabled_tools を参照"""
-        return self.mcp_manager.enabled_tools
+        """MCPManagerの available_tools を参照"""
+        return self.mcp_manager.available_tools
     
     def get_enabled_tools(self):
         """有効なツールのみ返す"""
-        return {
-            name: info for name, info in self.available_tools.items()
-            if name in self.enabled_tools
-        }
+        return self.mcp_manager.available_tools
     
     def toggle_tool(self, tool_name: str) -> bool:
         """ツールの有効/無効を切り替え（MCPManagerに委譲）"""
@@ -168,7 +165,7 @@ class AIAgent:
                 results.append({"tool": tool_name, "error": "Tool not available"})
                 continue
                 
-            if tool_name not in self.enabled_tools:
+            if tool_name not in self.mcp_manager.available_tools:
                 results.append({"tool": tool_name, "error": "Tool not enabled"})
                 continue
             
@@ -244,7 +241,7 @@ class AIAgent:
         if tool_name not in self.available_tools:
             return {"error": f"Tool '{tool_name}' not available"}
         
-        if tool_name not in self.enabled_tools:
+        if tool_name not in self.mcp_manager.available_tools:
             return {"error": f"Tool '{tool_name}' not enabled"}
         
         mcp_server_name = self.available_tools[tool_name]['mcp_server']
