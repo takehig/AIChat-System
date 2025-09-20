@@ -105,18 +105,6 @@ class StrategyEngine:
             logger.error(f"[DEBUG] JSON解析エラー: {e}")
             logger.error(f"[DEBUG] レスポンス内容: {response}")
             strategy.steps = []
-                    reason=step_data.get("reason", ""),
-                    output=None,
-                    execution_time_ms=None
-                )
-                detailed_steps.append(detailed_step)
-            
-            # 既存オブジェクトに戦略情報を追加
-            strategy.steps = detailed_steps
-            strategy.parse_error = False
-            strategy.strategy_llm_prompt = system_prompt
-            strategy.strategy_llm_response = response
-            strategy.strategy_llm_execution_time_ms = execution_time
             
             logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
             
