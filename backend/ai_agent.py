@@ -87,13 +87,14 @@ class AIAgent:
     # レガシー互換性のためのプロパティ
     @property
     def available_tools(self):
-        """MCPToolManager の available_tools を参照"""
+        """MCPTool クラス直接参照による available_tools"""
         return {
             tool_key: {
                 'name': tool.tool_name,
                 'description': tool.description,
                 'mcp_server': tool.mcp_server_name,
-                'enabled': tool_key in self.mcp_tool_manager.enabled_tools
+                'enabled': self.mcp_tool_manager.is_tool_enabled(tool_key),
+                'available': tool.available
             }
             for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
         }

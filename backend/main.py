@@ -219,23 +219,28 @@ async def toggle_tool(tool_name: str):
     if not ai_agent or not hasattr(ai_agent, 'mcp_tool_manager'):
         return {"status": "error", "message": "MCP Tool Manager not initialized"}
     
-    # MCPToolManagerから直接ツール状態を取得・変更
-    if tool_name not in ai_agent.mcp_tool_manager.registered_tools:
-        return {"status": "error", "message": f"Tool '{tool_name}' not found"}
-    
+    # MCPTool クラス経由で Enable/Disable 切り替え
     enabled = ai_agent.mcp_tool_manager.toggle_tool_enabled(tool_name)
+    tool = ai_agent.mcp_tool_manager.registered_tools[tool_name]
+    
     logger.info(f"Tool {tool_name} {'enabled' if enabled else 'disabled'}")
     
     return {
         "status": "success", 
         "tool_name": tool_name,
         "enabled": enabled,
+        "tool_info": {
+            "name": tool.tool_name,
+            "description": tool.description,
+            "mcp_server_name": tool.mcp_server_name,
+            "available": tool.available
+        },
         "message": f"Tool '{tool_name}' {'enabled' if enabled else 'disabled'}"
     }
 
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():
-    """新MCPToolManager から統一ツール一覧を取得"""
+    """MCPTool クラス直接参照による統一ツール一覧取得"""
     global ai_agent
     
     if not ai_agent or not hasattr(ai_agent, 'mcp_tool_manager'):
@@ -246,8 +251,8 @@ async def get_mcp_tools():
             "timestamp": datetime.now().isoformat()
         }
     
-    # 新MCPToolManager からツール取得
-    all_tools = ai_agent.mcp_tool_manager.get_all_tools()
+    # MCPTool クラスから直接全ツール取得
+    all_tools = ai_agent.mcp_tool_manager.registered_tools
     
     # MCP Server別に分類
     tools_info = {"productmaster": {"available": False, "enabled": False, "tools": []}, 
@@ -262,13 +267,14 @@ async def get_mcp_tools():
         else:
             continue
         
-        # ツール情報変換
+        # MCPTool クラス情報を直接使用
         converted_tool = {
             "name": tool.tool_key,
             "description": tool.tool_name,
             "usage_context": tool.description,
             "mcp_server_name": tool.mcp_server_name,
-            "enabled": ai_agent.mcp_tool_manager.is_tool_enabled(tool_key)
+            "enabled": ai_agent.mcp_tool_manager.is_tool_enabled(tool_key),
+            "available": tool.available
         }
         
         # 分類して追加

@@ -23,8 +23,11 @@ class StrategyEngine:
         self.optimization_rules = {}  # 最適化ルール
     
     def get_enabled_tools(self) -> Dict[str, Any]:
-        """有効化されたツールのみを取得"""
-        return self.mcp_tool_manager.get_enabled_tools()
+        """有効化されたツールのみを取得（MCPTool クラス直接参照）"""
+        return {
+            tool_key: tool for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
+            if self.mcp_tool_manager.is_tool_enabled(tool_key)
+        }
     
     async def plan_strategy(self, user_message: str, strategy: DetailedStrategy) -> None:
         """戦略立案（新MCPToolManager使用）"""
