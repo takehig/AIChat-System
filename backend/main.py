@@ -263,6 +263,7 @@ async def get_mcp_tools():
                         "name": tool["tool_key"],           # ツールキー
                         "description": tool["tool_name"],   # 短いツール名称
                         "usage_context": tool["description"], # 詳細説明
+                        "mcp_server_name": tool.get("mcp_server_name", "Unknown MCP"), # MCP Server名
                         "enabled": False
                     }
                     
