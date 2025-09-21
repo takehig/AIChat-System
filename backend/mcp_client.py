@@ -74,14 +74,14 @@ class MCPClient:
     async def get_tool_descriptions(self) -> Dict[str, Any]:
         """ツール情報を取得（usage_context付き）"""
         try:
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.server_url}/tools/descriptions") as response:
-                    if response.status == 200:
-                        return await response.json()
-                    else:
-                        logger.warning(f"Tool descriptions request failed: {response.status}")
-                        return {}
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.server_url}/tools/descriptions")
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.warning(f"Tool descriptions request failed: {response.status_code}")
+                    return {}
         except Exception as e:
             logger.error(f"Failed to get tool descriptions: {e}")
             return {}

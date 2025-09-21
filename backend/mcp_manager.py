@@ -1,5 +1,5 @@
 import asyncio
-import aiohttp
+import httpx
 import logging
 from typing import Dict, Optional, List, Any
 from mcp_client import MCPClient
@@ -47,15 +47,15 @@ class MCPManager:
         
         try:
             # MCP-Management から統一取得
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.mcp_management_url}/api/tools") as response:
-                    if response.status == 200:
-                        mcp_tools = await response.json()
-                        
-                        for tool in mcp_tools:
-                            tool_key = tool.get('tool_key')
-                            if tool_key:
-                                # MCP サーバー判定
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.mcp_management_url}/api/tools")
+                if response.status_code == 200:
+                    mcp_tools = response.json()
+                    
+                    for tool in mcp_tools:
+                        tool_key = tool.get('tool_key')
+                        if tool_key:
+                            # MCP サーバー判定
                                 mcp_server = 'unknown'
                                 if "Port 8003" in tool.get("remarks", ""):
                                     mcp_server = 'productmaster'
@@ -72,7 +72,7 @@ class MCPManager:
                         logger.info(f"MCP-Management から {len(self.available_tools)} 個のツールを取得")
                         return
                     else:
-                        logger.warning(f"MCP-Management API エラー: {response.status}")
+                        logger.warning(f"MCP-Management API エラー: {response.status_code}")
         except Exception as e:
             logger.error(f"MCP-Management 接続エラー: {e}")
         

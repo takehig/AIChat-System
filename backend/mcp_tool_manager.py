@@ -1,5 +1,5 @@
 import logging
-import aiohttp
+import httpx
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -44,26 +44,26 @@ class MCPToolManager:
         logger.info("DB登録済みツール読み込み中...")
         
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.mcp_management_url}/api/tools") as response:
-                    if response.status == 200:
-                        mcp_tools = await response.json()
-                        
-                        for tool_data in mcp_tools:
-                            tool = MCPTool(
-                                tool_key=tool_data.get('tool_key'),
-                                tool_name=tool_data.get('tool_name'),
-                                description=tool_data.get('description'),
-                                mcp_server_name=tool_data.get('mcp_server_name', 'Unknown'),
-                                remarks=tool_data.get('remarks'),
-                                enabled=True,  # デフォルト有効
-                                available=False  # ステータスチェック前は未確認
-                            )
-                            self.registered_tools[tool.tool_key] = tool
-                        
-                        logger.info(f"DB から {len(self.registered_tools)} 個のツールを読み込み")
-                    else:
-                        logger.error(f"MCP-Management DB読み込みエラー: HTTP {response.status}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.mcp_management_url}/api/tools")
+                if response.status_code == 200:
+                    mcp_tools = response.json()
+                    
+                    for tool_data in mcp_tools:
+                        tool = MCPTool(
+                            tool_key=tool_data.get('tool_key'),
+                            tool_name=tool_data.get('tool_name'),
+                            description=tool_data.get('description'),
+                            mcp_server_name=tool_data.get('mcp_server_name', 'Unknown'),
+                            remarks=tool_data.get('remarks'),
+                            enabled=True,  # デフォルト有効
+                            available=False  # ステータスチェック前は未確認
+                        )
+                        self.registered_tools[tool.tool_key] = tool
+                    
+                    logger.info(f"DB から {len(self.registered_tools)} 個のツールを読み込み")
+                else:
+                    logger.error(f"MCP-Management DB読み込みエラー: HTTP {response.status_code}")
         except Exception as e:
             logger.error(f"DB読み込み失敗: {e}")
     
@@ -79,16 +79,16 @@ class MCPToolManager:
         
         for server_name, url in server_urls.items():
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as response:
-                        if response.status == 200:
-                            # 該当サーバーのツールを available=True に設定
-                            for tool in self.registered_tools.values():
-                                if tool.mcp_server_name == server_name:
-                                    tool.available = True
-                            logger.info(f"{server_name}: 稼働中")
-                        else:
-                            logger.warning(f"{server_name}: HTTP {response.status}")
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    response = await client.get(url)
+                    if response.status_code == 200:
+                        # 該当サーバーのツールを available=True に設定
+                        for tool in self.registered_tools.values():
+                            if tool.mcp_server_name == server_name:
+                                tool.available = True
+                        logger.info(f"{server_name}: 稼働中")
+                    else:
+                        logger.warning(f"{server_name}: HTTP {response.status_code}")
             except Exception as e:
                 logger.warning(f"{server_name}: 接続失敗 - {e}")
     
