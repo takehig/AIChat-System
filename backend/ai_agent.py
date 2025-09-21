@@ -205,8 +205,12 @@ class AIAgent:
         else:
             return {"error": f"Unknown MCP server: {tool.mcp_server_name}"}
         
-        # MCPプロトコル準拠のペイロード
+        # MCPプロトコル準拠のペイロード (id フィールド追加)
+        import time
+        request_id = int(time.time() * 1000000)  # マイクロ秒精度で重複回避
+        
         payload = {
+            "id": request_id,
             "method": "tools/call",
             "params": {
                 "name": tool_name,
