@@ -235,18 +235,65 @@ async def toggle_tool(tool_name: str):
 
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():
-    """利用可能なMCPツール一覧を動的取得"""
+    """MCP-Management から統一ツール一覧を取得"""
     global ai_agent
     
-    tools_info = {}
+    tools_info = {"productmaster": {"available": False, "enabled": False, "tools": []}, 
+                  "crm": {"available": False, "enabled": False, "tools": []}}
     
-    # ProductMaster MCP から動的取得
+    # MCP-Management から統一取得
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get("http://localhost:8008/api/tools")
+            if response.status_code == 200:
+                mcp_tools = response.json()
+                
+                # MCPサーバー別にツールを分類
+                for tool in mcp_tools:
+                    # remarks から MCP サーバーを判定
+                    if "Port 8003" in tool.get("remarks", ""):
+                        mcp_type = "productmaster"
+                    elif "Port 8004" in tool.get("remarks", ""):
+                        mcp_type = "crm"
+                    else:
+                        continue
+                    
+                    # MCP-Management データ構造を AIChat 形式に変換
+                    converted_tool = {
+                        "name": tool["tool_key"],           # ツールキー
+                        "description": tool["tool_name"],   # 短いツール名称
+                        "usage_context": tool["description"], # 詳細説明
+                        "enabled": False
+                    }
+                    
+                    # ツール有効状態設定
+                    if ai_agent and hasattr(ai_agent, 'mcp_manager'):
+                        converted_tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["tool_key"])
+                    
+                    # 分類して追加
+                    if tools_info[mcp_type]["tools"] == []:
+                        tools_info[mcp_type] = {"available": True, "enabled": False, "tools": []}
+                    tools_info[mcp_type]["tools"].append(converted_tool)
+                        
+    except Exception as e:
+        print(f"[MCP_TOOLS] MCP-Management unavailable: {e}")
+        # フォールバック: 個別MCPサーバーから取得
+        await _fallback_direct_mcp_fetch(tools_info, ai_agent)
+    
+    return {
+        "status": "success",
+        "tools": tools_info,
+        "timestamp": datetime.now().isoformat()
+    }
+
+async def _fallback_direct_mcp_fetch(tools_info, ai_agent):
+    """フォールバック: 個別MCPサーバーから直接取得"""
+    # ProductMaster MCP
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get("http://localhost:8003/tools/descriptions")
             if response.status_code == 200:
                 productmaster_data = response.json()
-                # 各ツールに個別の enabled 状態を設定
                 tools = productmaster_data.get("tools", [])
                 if ai_agent and hasattr(ai_agent, 'mcp_manager'):
                     for tool in tools:
@@ -254,51 +301,25 @@ async def get_mcp_tools():
                 else:
                     for tool in tools:
                         tool["enabled"] = False
-                        
-                tools_info["productmaster"] = {
-                    "available": True,
-                    "enabled": False,  # MCP単位は使用しない
-                    "tools": tools
-                }
-            else:
-                raise Exception(f"HTTP {response.status_code}")
+                tools_info["productmaster"] = {"available": True, "enabled": False, "tools": tools}
     except Exception as e:
-        print(f"[MCP_TOOLS] ProductMaster MCP unavailable: {e}")
-        tools_info["productmaster"] = {
-            "available": False,
-            "enabled": False,
-            "tools": []
-        }
+        print(f"[MCP_TOOLS] ProductMaster fallback failed: {e}")
     
-    # CRM MCP から動的取得
+    # CRM MCP  
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get("http://localhost:8004/tools/descriptions")
             if response.status_code == 200:
                 crm_data = response.json()
-                # 各ツールに個別の enabled 状態を設定
                 tools = crm_data.get("tools", [])
                 if ai_agent and hasattr(ai_agent, 'mcp_manager'):
                     for tool in tools:
                         tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
                 else:
                     for tool in tools:
-                        tool["enabled"] = False
-                        
-                tools_info["crm"] = {
-                    "available": True,
-                    "enabled": False,  # MCP単位は使用しない
-                    "tools": tools
-                }
-            else:
-                raise Exception(f"HTTP {response.status_code}")
+                tools_info["crm"] = {"available": True, "enabled": False, "tools": tools}
     except Exception as e:
-        print(f"[MCP_TOOLS] CRM MCP unavailable: {e}")
-        tools_info["crm"] = {
-            "available": False,
-            "enabled": False,
-            "tools": []
-        }
+        print(f"[MCP_TOOLS] CRM fallback failed: {e}")
     
     return {
         "status": "success",
