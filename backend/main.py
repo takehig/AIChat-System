@@ -223,7 +223,7 @@ async def toggle_tool(tool_name: str):
     if tool_name not in ai_agent.mcp_manager.available_tools:
         return {"status": "error", "message": f"Tool '{tool_name}' not found"}
     
-    enabled = ai_agent.mcp_manager.toggle_tool(tool_name)
+    enabled = ai_agent.mcp_manager.toggle_tool_enabled(tool_name)
     logger.info(f"Tool {tool_name} {'enabled' if enabled else 'disabled'}")
     
     return {
@@ -250,7 +250,7 @@ async def get_mcp_tools():
                 tools = productmaster_data.get("tools", [])
                 if ai_agent and hasattr(ai_agent, 'mcp_manager'):
                     for tool in tools:
-                        tool["enabled"] = ai_agent.mcp_manager.get_tool_status(tool["name"])
+                        tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
                 else:
                     for tool in tools:
                         tool["enabled"] = False
@@ -280,7 +280,7 @@ async def get_mcp_tools():
                 tools = crm_data.get("tools", [])
                 if ai_agent and hasattr(ai_agent, 'mcp_manager'):
                     for tool in tools:
-                        tool["enabled"] = ai_agent.mcp_manager.get_tool_status(tool["name"])
+                        tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
                 else:
                     for tool in tools:
                         tool["enabled"] = False
