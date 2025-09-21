@@ -49,8 +49,8 @@ class ChatResponse(BaseModel):
 
 class SystemStatus(BaseModel):
     status: str
-    mcp_available: bool
-    productmaster_enabled: Optional[bool] = False
+    mcp_tools_count: int
+    enabled_tools_count: int
     timestamp: str
 
 # 起動時初期化
@@ -148,12 +148,18 @@ async def clear_conversation(request: ChatRequest):
 async def get_status():
     global ai_agent
     
-    mcp_available = ai_agent.mcp_available if ai_agent else False
+    if ai_agent:
+        total_tools = len(ai_agent.mcp_tool_manager.registered_tools)
+        enabled_tools = len([k for k, v in ai_agent.mcp_tool_manager.registered_tools.items() 
+                           if ai_agent.mcp_tool_manager.is_tool_enabled(k)])
+    else:
+        total_tools = 0
+        enabled_tools = 0
     
     return SystemStatus(
         status="running",
-        mcp_available=mcp_available,
-        productmaster_enabled=mcp_available,
+        mcp_tools_count=total_tools,
+        enabled_tools_count=enabled_tools,
         timestamp=datetime.now().isoformat()
     )
 
@@ -161,7 +167,12 @@ async def get_status():
 async def get_productmaster_status():
     """ProductMaster MCP専用の状態取得"""
     global ai_agent
-    productmaster_enabled = ai_agent.mcp_available if ai_agent else False
+    
+    if ai_agent:
+        productmaster_enabled = ai_agent.mcp_tool_manager.is_tool_enabled("get_product_details")
+    else:
+        productmaster_enabled = False
+        
     return {
         "status": "success",
         "productmaster_enabled": productmaster_enabled,
@@ -176,9 +187,10 @@ async def toggle_productmaster_mcp():
         raise HTTPException(status_code=503, detail="AI Agent not initialized")
     
     try:
-        # ProductMaster MCP状態を切り替え
-        new_status = not ai_agent.mcp_available
-        ai_agent.mcp_available = new_status
+        # get_product_details ツールの状態を切り替え
+        current_status = ai_agent.mcp_tool_manager.is_tool_enabled("get_product_details")
+        await ai_agent.mcp_tool_manager.toggle_tool_enabled("get_product_details")
+        new_status = not current_status
         
         return {
             "status": "success",

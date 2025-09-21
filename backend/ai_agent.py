@@ -54,9 +54,6 @@ class AIAgent:
         from mcp_tool_manager import MCPToolManager
         self.mcp_tool_manager = MCPToolManager()
         
-        # レガシー互換性（段階的移行のため）
-        self.mcp_available = False
-        
         # LLMユーティリティ初期化
         self.llm_util = LLMUtil(self.bedrock_client, self.model_id)
         
@@ -64,40 +61,23 @@ class AIAgent:
         self.strategy_engine = StrategyEngine(
             self.bedrock_client, 
             self.llm_util,
-            self.mcp_tool_manager  # 新しいMCP管理クラス使用
+            self.mcp_tool_manager
         )
         self.integration_engine = IntegrationEngine(self.bedrock_client, self.llm_util)
         self.mcp_executor = MCPExecutor()
     
     async def initialize(self):
-        """AI Agent初期化（新MCPToolManager使用）"""
+        """AI Agent初期化"""
         try:
-            # 新しいMCP管理クラス初期化
             await self.mcp_tool_manager.initialize()
             
-            # レガシー互換性
-            enabled_tools = self.mcp_tool_manager.get_enabled_tools()
-            self.mcp_available = len(enabled_tools) > 0
+            enabled_count = len([k for k, v in self.mcp_tool_manager.registered_tools.items() 
+                               if self.mcp_tool_manager.is_tool_enabled(k)])
             
-            if self.mcp_available:
-                logger.info(f"MCP integration enabled ({len(enabled_tools)} tools available)")
+            if enabled_count > 0:
+                logger.info(f"MCP integration enabled ({enabled_count} tools available)")
         except Exception as e:
             logger.error(f"AI Agent initialization error: {e}")
-    
-    # レガシー互換性のためのプロパティ
-    @property
-    def available_tools(self):
-        """MCPTool クラス直接参照による available_tools"""
-        return {
-            tool_key: {
-                'name': tool.tool_name,
-                'description': tool.description,
-                'mcp_server': tool.mcp_server_name,
-                'enabled': self.mcp_tool_manager.is_tool_enabled(tool_key),
-                'available': tool.available
-            }
-            for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
-        }
     
     @property
     def enabled_tools(self):
@@ -207,7 +187,7 @@ class AIAgent:
     
     async def execute_tool_directly(self, tool_name: str, tool_input: str) -> Dict[str, Any]:
         """ツールを直接実行"""
-        if tool_name not in self.available_tools:
+        if tool_name not in self.mcp_tool_manager.registered_tools:
             return {"error": f"Tool '{tool_name}' not available"}
         
         if not self.mcp_tool_manager.is_tool_enabled(tool_name):
