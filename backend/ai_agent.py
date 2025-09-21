@@ -2,6 +2,7 @@ import json
 import boto3
 import logging
 import time
+import httpx
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
@@ -193,5 +194,34 @@ class AIAgent:
         if not self.mcp_tool_manager.is_tool_enabled(tool_name):
             return {"error": f"Tool '{tool_name}' not enabled"}
         
-        # TODO: MCP実行機能は将来実装
-        return {"error": "MCP execution not implemented"}
+        # MCPToolManager からツール情報取得
+        tool = self.mcp_tool_manager.registered_tools[tool_name]
+        
+        # MCP Server URL決定
+        if tool.mcp_server_name == "CRM MCP":
+            mcp_url = "http://localhost:8004/mcp"
+        elif tool.mcp_server_name == "ProductMaster MCP":
+            mcp_url = "http://localhost:8003/mcp"
+        else:
+            return {"error": f"Unknown MCP server: {tool.mcp_server_name}"}
+        
+        # MCPプロトコル準拠のペイロード
+        payload = {
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": {"text_input": tool_input}
+            }
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(mcp_url, json=payload)
+                
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    return {"error": f"MCP server error: {response.status_code} - {response.text}"}
+                    
+        except Exception as e:
+            return {"error": f"MCP execution failed: {str(e)}"}
