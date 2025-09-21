@@ -163,45 +163,6 @@ class AIAgent:
                 "error": str(e)
             }
     
-    async def execute_tools(self, tool_requests: list, tool_arguments: dict) -> list:
-        """複数ツールの実行"""
-        results = []
-        for tool_name in tool_requests:
-            if tool_name not in self.available_tools:
-                results.append({"tool": tool_name, "error": "Tool not available"})
-                continue
-                
-            if not self.mcp_tool_manager.is_tool_enabled(tool_name):
-                results.append({"tool": tool_name, "error": "Tool not enabled"})
-                continue
-            
-            # TODO: MCP実行機能は将来実装
-            # mcp_server_name = self.available_tools[tool_name]['mcp_server']
-            # client = self.mcp_tool_manager.get_client(mcp_server_name)
-            results.append({"tool": tool_name, "error": "MCP execution not implemented"})
-            
-            try:
-                if await client.health_check():
-                    result = await client.call_tool(tool_name, tool_arguments.get(tool_name, {}))
-                    results.append({"tool": tool_name, "result": result})
-                else:
-                    results.append({"tool": tool_name, "error": "MCP server unavailable"})
-            except Exception as e:
-                results.append({"tool": tool_name, "error": str(e)})
-        
-        return results
-    
-    def merge_tool_debug_info(self, tool_results: list) -> dict:
-        """複数ツールのデバッグ情報をマージ"""
-        merged_debug = {}
-        for result in tool_results:
-            tool_name = result["tool"]
-            if "result" in result and isinstance(result["result"], dict):
-                debug_info = result["result"].get("debug_info", {})
-                if debug_info:
-                    merged_debug[tool_name] = debug_info
-        return merged_debug
-    
     async def execute_detailed_strategy(self, strategy: DetailedStrategy, user_message: str) -> None:
         """戦略に基づく決定論的実行 - 既存オブジェクトに実行結果を埋め込み"""
         current_input = user_message
@@ -253,16 +214,4 @@ class AIAgent:
             return {"error": f"Tool '{tool_name}' not enabled"}
         
         # TODO: MCP実行機能は将来実装
-        # mcp_server_name = self.available_tools[tool_name]['mcp_server']
-        # client = self.mcp_tool_manager.get_client(mcp_server_name)
         return {"error": "MCP execution not implemented"}
-        
-        try:
-            if await client.health_check():
-                # テキスト入力でツール実行
-                result = await client.call_tool(tool_name, {"text_input": tool_input})
-                return result
-            else:
-                return {"error": "MCP server unavailable"}
-        except Exception as e:
-            return {"error": str(e)}

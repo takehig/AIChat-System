@@ -106,13 +106,6 @@ class StrategyEngine:
             strategy.raw_response = response
             strategy.strategy_llm_prompt = system_prompt
     
-    def _generate_tools_description(self, enabled_tools: Dict) -> str:
-        """フォールバック: 動的ツール説明生成"""
-        descriptions = []
-        for tool_key, tool in enabled_tools.items():
-            descriptions.append(f"- {tool_key}: {tool.description} (MCP Server: {tool.mcp_server_name})")
-        return "\n".join(descriptions)
-    
     def _generate_tools_description_from_manager(self) -> str:
         """MCPToolManager から直接ツール情報生成（シンプル版）"""
         descriptions = []
