@@ -118,10 +118,3 @@ class StrategyEngine:
         for tool_key, tool in enabled_tools.items():
             descriptions.append(f"- {tool_key}: {tool.description} (MCP Server: {tool.mcp_server_name})")
         return "\n".join(descriptions)
-            strategy.strategy_llm_response = response
-            strategy.strategy_llm_execution_time_ms = execution_time
-        
-        # LLM情報記録
-        logger.info(f"[DEBUG] LLM情報記録完了 - prompt長: {len(system_prompt)}, response長: {len(response)}")
-        
-        # 戻り値なし（参照渡し）
