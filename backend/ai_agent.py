@@ -50,9 +50,9 @@ class AIAgent:
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         
-        # MCPManager統合（状態管理を委譲）
-        from mcp_manager import MCPManager
-        self.mcp_manager = MCPManager()
+        # 新しいMCP管理クラス使用
+        from mcp_tool_manager import MCPToolManager
+        self.mcp_tool_manager = MCPToolManager()
         
         # レガシー互換性（段階的移行のため）
         self.mcp_available = False
@@ -71,40 +71,46 @@ class AIAgent:
         self.mcp_executor = MCPExecutor()
     
     async def initialize(self):
-        """AI Agent初期化（MCPManager使用）"""
+        """AI Agent初期化（新MCPToolManager使用）"""
         try:
-            # MCPManagerの初期化
-            await self.mcp_manager.initialize()
-            
-            # ツール情報を収集
-            await self.mcp_manager.discover_available_tools()
+            # 新しいMCP管理クラス初期化
+            await self.mcp_tool_manager.initialize()
             
             # レガシー互換性
-            self.mcp_available = len(self.mcp_manager.clients) > 0
+            enabled_tools = self.mcp_tool_manager.get_enabled_tools()
+            self.mcp_available = len(enabled_tools) > 0
             
             if self.mcp_available:
-                logger.info(f"MCP integration enabled ({len(self.mcp_manager.clients)} servers)")
+                logger.info(f"MCP integration enabled ({len(enabled_tools)} tools available)")
         except Exception as e:
             logger.error(f"AI Agent initialization error: {e}")
     
     # レガシー互換性のためのプロパティ
     @property
     def available_tools(self):
-        """MCPManagerの available_tools を参照"""
-        return self.mcp_manager.available_tools
+        """MCPToolManager の available_tools を参照"""
+        return {
+            tool_key: {
+                'name': tool.tool_name,
+                'description': tool.description,
+                'mcp_server': tool.mcp_server_name,
+                'enabled': tool_key in self.mcp_tool_manager.enabled_tools
+            }
+            for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
+        }
     
     @property
     def enabled_tools(self):
-        """MCPManagerの available_tools を参照"""
-        return self.mcp_manager.available_tools
+        """MCPToolManager の enabled_tools を参照"""
+        return self.mcp_tool_manager.enabled_tools
     
     def get_enabled_tools(self):
         """有効なツールのみ返す"""
-        return self.mcp_manager.available_tools
+        return self.mcp_tool_manager.get_enabled_tools()
     
     def toggle_tool(self, tool_name: str) -> bool:
-        """ツールの有効/無効を切り替え（MCPManagerに委譲）"""
-        return self.mcp_manager.toggle_tool(tool_name)
+        """ツールの有効/無効を切り替え（MCPToolManagerに委譲）"""
+        return self.mcp_tool_manager.toggle_tool_enabled(tool_name)
     
     async def process_message(self, user_message: str) -> Dict[str, Any]:
         """メッセージ処理（参照渡し設計・段階的実行）"""

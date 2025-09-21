@@ -216,14 +216,14 @@ async def toggle_tool(tool_name: str):
     """個別ツールのON/OFF切り替え"""
     global ai_agent
     
-    if not ai_agent or not hasattr(ai_agent, 'mcp_manager'):
-        return {"status": "error", "message": "MCP Manager not initialized"}
+    if not ai_agent or not hasattr(ai_agent, 'mcp_tool_manager'):
+        return {"status": "error", "message": "MCP Tool Manager not initialized"}
     
-    # MCPManagerから直接ツール状態を取得・変更
-    if tool_name not in ai_agent.mcp_manager.available_tools:
+    # MCPToolManagerから直接ツール状態を取得・変更
+    if tool_name not in ai_agent.mcp_tool_manager.registered_tools:
         return {"status": "error", "message": f"Tool '{tool_name}' not found"}
     
-    enabled = ai_agent.mcp_manager.toggle_tool_enabled(tool_name)
+    enabled = ai_agent.mcp_tool_manager.toggle_tool_enabled(tool_name)
     logger.info(f"Tool {tool_name} {'enabled' if enabled else 'disabled'}")
     
     return {
