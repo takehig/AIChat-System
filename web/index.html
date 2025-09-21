@@ -357,7 +357,8 @@
                                     description: tool.description,
                                     usage_context: tool.usage_context,
                                     enabled: tool.enabled,  // ツール個別の状態を使用
-                                    mcpName: mcpName
+                                    mcpName: mcpName,
+                                    mcp_server_name: tool.mcp_server_name  // ← 追加: API から mcp_server_name を設定
                                 });
                             });
                         }
