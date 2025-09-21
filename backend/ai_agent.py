@@ -60,12 +60,11 @@ class AIAgent:
         # LLMユーティリティ初期化
         self.llm_util = LLMUtil(self.bedrock_client, self.model_id)
         
-        # エンジン統合（MCPManagerの参照を渡す）
+        # エンジン初期化（mcp_tool_manager 使用）
         self.strategy_engine = StrategyEngine(
             self.bedrock_client, 
-            self.mcp_manager.available_tools,  # MCPManagerの辞書を参照
-            self.llm_util, 
-            self.mcp_manager.available_tools   # MCPManagerの辞書を参照
+            self.llm_util,
+            self.mcp_tool_manager  # 新しいMCP管理クラス使用
         )
         self.integration_engine = IntegrationEngine(self.bedrock_client, self.llm_util)
         self.mcp_executor = MCPExecutor()

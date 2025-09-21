@@ -11,12 +11,11 @@ logger = logging.getLogger(__name__)
 class StrategyEngine:
     """戦略立案専用エンジン - 将来大幅拡張予定"""
     
-    def __init__(self, bedrock_client, available_tools: Dict[str, Any], llm_util, enabled_tools_ref):
+    def __init__(self, bedrock_client, llm_util, mcp_tool_manager):
         self.bedrock_client = bedrock_client
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
-        self.available_tools = available_tools
         self.llm_util = llm_util
-        self.enabled_tools = enabled_tools_ref  # ai_agent の enabled_tools を共有参照
+        self.mcp_tool_manager = mcp_tool_manager  # 新しいMCP管理クラス使用
         
         # === 将来拡張用（現在は空実装） ===
         self.query_patterns = {}      # クエリパターン学習
@@ -25,22 +24,16 @@ class StrategyEngine:
     
     def get_enabled_tools(self) -> Dict[str, Any]:
         """有効化されたツールのみを取得"""
-        return {name: info for name, info in self.available_tools.items() 
-                if name in self.enabled_tools}
+        return self.mcp_tool_manager.get_enabled_tools()
     
     async def plan_strategy(self, user_message: str, strategy: DetailedStrategy) -> None:
-        """戦略立案（MCP-Management統合版）"""
+        """戦略立案（新MCPToolManager使用）"""
         logger.info(f"[DEBUG] 戦略立案開始: {user_message}")
         
-        # MCP-Management から利用可能ツール取得
-        await self.mcp_manager.discover_available_tools()
-        enabled_tools = self.mcp_manager.get_enabled_tools()
-        logger.info(f"[DEBUG] MCP-Management統合: {len(enabled_tools)}個のツール利用可能")
+        # 新MCPToolManager から利用可能ツール取得
+        enabled_tools = self.mcp_tool_manager.get_enabled_tools()
+        logger.info(f"[DEBUG] MCPToolManager: {len(enabled_tools)}個のツール利用可能")
         logger.info(f"[DEBUG] 利用可能ツール: {list(enabled_tools.keys())}")
-        
-        # 戦略立案用ツール説明文字列生成
-        tools_description = self.mcp_manager.get_strategy_prompt_tools()
-        logger.info(f"[DEBUG] ツール説明文字列長: {len(tools_description)}文字")
         
         # SystemPrompt Management から戦略立案プロンプトを取得
         prompt_data = await get_system_prompt_by_key("strategy_planning")
@@ -48,21 +41,18 @@ class StrategyEngine:
         if not base_prompt:
             raise Exception("strategy_planning が空です")
         
-        # 動的プロンプト生成（MCP-Management統合版）
+        # SystemPrompt Management からツール情報プロンプトを取得
+        tools_prompt_data = await get_system_prompt_by_key("mcp_tools_description")
+        tools_description = tools_prompt_data.get("prompt_text", "")
+        if not tools_description:
+            # フォールバック: 動的生成
+            tools_description = self._generate_tools_description(enabled_tools)
+        
+        # 動的プロンプト生成（DB統合版）
         system_prompt = f"""{base_prompt}
 
 ## 利用可能なMCPツール
 {tools_description}
-
-## 重要な連携パターン
-- 商品名検索 → search_products_by_name_fuzzy (ProductMaster MCP)
-- 商品ID取得後 → get_customers_by_product (CRM MCP)
-- 顧客情報詳細 → get_customer_holdings (CRM MCP)
-- 債券満期検索 → search_customers_by_bond_maturity (CRM MCP)
-
-## 戦略立案指示
-上記ツールを使用して、ユーザーの要求に最適な手順を立案してください。
-商品名が含まれる場合は必ず2ステップ（商品名→ID変換→顧客検索）で計画してください。
 
 質問内容: {user_message}"""
         
@@ -118,6 +108,13 @@ class StrategyEngine:
             strategy.parse_error_message = str(e)
             strategy.raw_response = response
             strategy.strategy_llm_prompt = system_prompt
+    
+    def _generate_tools_description(self, enabled_tools: Dict) -> str:
+        """フォールバック: 動的ツール説明生成"""
+        descriptions = []
+        for tool_key, tool in enabled_tools.items():
+            descriptions.append(f"- {tool_key}: {tool.description} (MCP Server: {tool.mcp_server_name})")
+        return "\n".join(descriptions)
             strategy.strategy_llm_response = response
             strategy.strategy_llm_execution_time_ms = execution_time
         
