@@ -47,19 +47,17 @@ class StrategyEngine:
         # MCPToolManager から直接ツール情報生成（API不要）
         tools_description = self._generate_tools_description_from_manager()
         
-        # 動的プロンプト生成（MCPToolManager直接版）
-        system_prompt = f"""{base_prompt}
-
-## 利用可能なMCPツール
-{tools_description}
-
-質問内容: {user_message}"""
+        # システムプロンプト生成（base_prompt + tools_description のみ）
+        system_prompt = f"""{base_prompt}\r\n\r\n## 利用可能なMCPツール\r\n{tools_description}"""
         
-        logger.info(f"[DEBUG] LLM呼び出し開始 - プロンプト長: {len(system_prompt)}")
+        # ユーザーメッセージ生成（入力プロンプトの素の状態）
+        user_input = f"これが入力されたプロンプトです。\r\n{user_message}"
+        
+        logger.info(f"[DEBUG] LLM呼び出し開始 - システムプロンプト長: {len(system_prompt)}, ユーザー入力長: {len(user_input)}")
         
         # LLM呼び出し
         start_time = time.time()
-        response = await self.llm_util.call_claude(system_prompt, "上記の質問に対する戦略をJSONで返してください。")
+        response = await self.llm_util.call_claude(system_prompt, user_input)
         execution_time = (time.time() - start_time) * 1000
         
         logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, 実行時間: {execution_time}ms")
