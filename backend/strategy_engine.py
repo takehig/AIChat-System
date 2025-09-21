@@ -99,13 +99,6 @@ class StrategyEngine:
             strategy.raw_response = response
             
         logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
-            
-            # 解析エラー時の戦略情報を既存オブジェクトに設定
-            strategy.steps = []
-            strategy.parse_error = True
-            strategy.parse_error_message = str(e)
-            strategy.raw_response = response
-            strategy.strategy_llm_prompt = system_prompt
     
     def _generate_tools_description_from_manager(self) -> str:
         """MCPToolManager から直接ツール情報生成（シンプル版）"""
