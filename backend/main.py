@@ -299,9 +299,11 @@ async def _fallback_direct_mcp_fetch(tools_info, ai_agent):
                 if ai_agent and hasattr(ai_agent, 'mcp_manager'):
                     for tool in tools:
                         tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
+                        tool["mcp_server_name"] = "ProductMaster MCP"  # 追加
                 else:
                     for tool in tools:
                         tool["enabled"] = False
+                        tool["mcp_server_name"] = "ProductMaster MCP"  # 追加
                 tools_info["productmaster"] = {"available": True, "enabled": False, "tools": tools}
     except Exception as e:
         print(f"[MCP_TOOLS] ProductMaster fallback failed: {e}")
@@ -316,8 +318,11 @@ async def _fallback_direct_mcp_fetch(tools_info, ai_agent):
                 if ai_agent and hasattr(ai_agent, 'mcp_manager'):
                     for tool in tools:
                         tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
+                        tool["mcp_server_name"] = "CRM MCP"  # 追加
                 else:
                     for tool in tools:
+                        tool["enabled"] = False
+                        tool["mcp_server_name"] = "CRM MCP"  # 追加
                         tool["enabled"] = False
                 tools_info["crm"] = {"available": True, "enabled": False, "tools": tools}
     except Exception as e:
