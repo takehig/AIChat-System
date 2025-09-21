@@ -80,10 +80,10 @@ class AIAgent:
             await self.mcp_manager.discover_available_tools()
             
             # レガシー互換性
-            self.mcp_available = len(self.mcp_manager.mcp_clients) > 0
+            self.mcp_available = len(self.mcp_manager.clients) > 0
             
             if self.mcp_available:
-                logger.info(f"MCP integration enabled ({len(self.mcp_manager.mcp_clients)} servers)")
+                logger.info(f"MCP integration enabled ({len(self.mcp_manager.clients)} servers)")
         except Exception as e:
             logger.error(f"AI Agent initialization error: {e}")
     
@@ -170,7 +170,7 @@ class AIAgent:
                 continue
             
             mcp_server_name = self.available_tools[tool_name]['mcp_server']
-            client = self.mcp_manager.mcp_clients[mcp_server_name]
+            client = self.mcp_manager.clients[mcp_server_name]
             
             try:
                 if await client.health_check():
@@ -245,7 +245,7 @@ class AIAgent:
             return {"error": f"Tool '{tool_name}' not enabled"}
         
         mcp_server_name = self.available_tools[tool_name]['mcp_server']
-        client = self.mcp_manager.mcp_clients[mcp_server_name]
+        client = self.mcp_manager.clients[mcp_server_name]
         
         try:
             if await client.health_check():

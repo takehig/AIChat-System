@@ -52,7 +52,7 @@ class MCPManager:
                     self.clients[mcp_id] = MCPClient(mcp_config['url'])
                 
                 tools_list = await self.clients[mcp_id].list_tools()
-                for tool in tools_list.get('tools', []):
+                for tool in tools_list:  # List を直接イテレート
                     tool_key = tool.get('name')
                     if tool_key:
                         self.available_tools[tool_key] = {
