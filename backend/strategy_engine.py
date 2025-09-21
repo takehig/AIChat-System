@@ -116,39 +116,15 @@ class StrategyEngine:
         return "\n".join(descriptions)
     
     def _generate_tools_description_from_manager(self) -> str:
-        """MCPToolManager から直接ツール情報生成（最適化版）"""
+        """MCPToolManager から直接ツール情報生成（シンプル版）"""
         descriptions = []
         
-        # 有効なツールのみを取得
+        # 有効なツールのみを単純に列挙
         for tool_key, tool in self.mcp_tool_manager.registered_tools.items():
             if self.mcp_tool_manager.is_tool_enabled(tool_key):
-                # MCP Server別に分類して説明生成
-                if tool.mcp_server_name == "ProductMaster MCP":
-                    descriptions.append(f"- {tool_key}: {tool.description} (商品情報検索)")
-                elif tool.mcp_server_name == "CRM MCP":
-                    descriptions.append(f"- {tool_key}: {tool.description} (顧客情報検索)")
-                else:
-                    descriptions.append(f"- {tool_key}: {tool.description} ({tool.mcp_server_name})")
+                descriptions.append(f"- {tool.tool_name} ({tool_key}): {tool.description} - {tool.mcp_server_name}")
         
         if not descriptions:
             return "現在利用可能なMCPツールはありません。"
         
-        # MCP Server別にグループ化して整理
-        productmaster_tools = [d for d in descriptions if "(商品情報検索)" in d]
-        crm_tools = [d for d in descriptions if "(顧客情報検索)" in d]
-        other_tools = [d for d in descriptions if "(商品情報検索)" not in d and "(顧客情報検索)" not in d]
-        
-        result = []
-        if productmaster_tools:
-            result.append("### ProductMaster MCP")
-            result.extend(productmaster_tools)
-            result.append("")
-        if crm_tools:
-            result.append("### CRM MCP")
-            result.extend(crm_tools)
-            result.append("")
-        if other_tools:
-            result.append("### その他のMCP")
-            result.extend(other_tools)
-        
-        return "\n".join(result).strip()
+        return "\r\n".join(descriptions)
