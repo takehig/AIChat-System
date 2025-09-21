@@ -278,8 +278,11 @@ async def get_mcp_tools():
                         
     except Exception as e:
         print(f"[MCP_TOOLS] MCP-Management unavailable: {e}")
-        # フォールバック: 個別MCPサーバーから取得
-        await _fallback_direct_mcp_fetch(tools_info, ai_agent)
+        # ERROR表示: 個別MCPサーバー取得は行わない
+        tools_info = {
+            "productmaster": {"available": False, "enabled": False, "tools": []}, 
+            "crm": {"available": False, "enabled": False, "tools": []}
+        }
     
     return {
         "status": "success",
