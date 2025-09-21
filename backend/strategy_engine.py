@@ -30,13 +30,13 @@ class StrategyEngine:
         }
     
     async def plan_strategy(self, user_message: str, strategy: DetailedStrategy) -> None:
-        """戦略立案（新MCPToolManager使用）"""
+        """戦略立案（MCPToolManager直接参照最適化版）"""
         logger.info(f"[DEBUG] 戦略立案開始: {user_message}")
         
-        # 新MCPToolManager から利用可能ツール取得
-        enabled_tools = self.mcp_tool_manager.get_enabled_tools()
-        logger.info(f"[DEBUG] MCPToolManager: {len(enabled_tools)}個のツール利用可能")
-        logger.info(f"[DEBUG] 利用可能ツール: {list(enabled_tools.keys())}")
+        # MCPToolManager から直接有効ツール数確認
+        enabled_count = len([k for k, v in self.mcp_tool_manager.registered_tools.items() 
+                           if self.mcp_tool_manager.is_tool_enabled(k)])
+        logger.info(f"[DEBUG] MCPToolManager: {enabled_count}個のツール利用可能")
         
         # SystemPrompt Management から戦略立案プロンプトを取得
         prompt_data = await get_system_prompt_by_key("strategy_planning")
@@ -44,14 +44,10 @@ class StrategyEngine:
         if not base_prompt:
             raise Exception("strategy_planning が空です")
         
-        # SystemPrompt Management からツール情報プロンプトを取得
-        tools_prompt_data = await get_system_prompt_by_key("mcp_tools_description")
-        tools_description = tools_prompt_data.get("prompt_text", "")
-        if not tools_description:
-            # フォールバック: 動的生成
-            tools_description = self._generate_tools_description(enabled_tools)
+        # MCPToolManager から直接ツール情報生成（API不要）
+        tools_description = self._generate_tools_description_from_manager()
         
-        # 動的プロンプト生成（DB統合版）
+        # 動的プロンプト生成（MCPToolManager直接版）
         system_prompt = f"""{base_prompt}
 
 ## 利用可能なMCPツール
@@ -118,3 +114,41 @@ class StrategyEngine:
         for tool_key, tool in enabled_tools.items():
             descriptions.append(f"- {tool_key}: {tool.description} (MCP Server: {tool.mcp_server_name})")
         return "\n".join(descriptions)
+    
+    def _generate_tools_description_from_manager(self) -> str:
+        """MCPToolManager から直接ツール情報生成（最適化版）"""
+        descriptions = []
+        
+        # 有効なツールのみを取得
+        for tool_key, tool in self.mcp_tool_manager.registered_tools.items():
+            if self.mcp_tool_manager.is_tool_enabled(tool_key):
+                # MCP Server別に分類して説明生成
+                if tool.mcp_server_name == "ProductMaster MCP":
+                    descriptions.append(f"- {tool_key}: {tool.description} (商品情報検索)")
+                elif tool.mcp_server_name == "CRM MCP":
+                    descriptions.append(f"- {tool_key}: {tool.description} (顧客情報検索)")
+                else:
+                    descriptions.append(f"- {tool_key}: {tool.description} ({tool.mcp_server_name})")
+        
+        if not descriptions:
+            return "現在利用可能なMCPツールはありません。"
+        
+        # MCP Server別にグループ化して整理
+        productmaster_tools = [d for d in descriptions if "(商品情報検索)" in d]
+        crm_tools = [d for d in descriptions if "(顧客情報検索)" in d]
+        other_tools = [d for d in descriptions if "(商品情報検索)" not in d and "(顧客情報検索)" not in d]
+        
+        result = []
+        if productmaster_tools:
+            result.append("### ProductMaster MCP")
+            result.extend(productmaster_tools)
+            result.append("")
+        if crm_tools:
+            result.append("### CRM MCP")
+            result.extend(crm_tools)
+            result.append("")
+        if other_tools:
+            result.append("### その他のMCP")
+            result.extend(other_tools)
+        
+        return "\n".join(result).strip()
