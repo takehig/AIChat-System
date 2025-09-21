@@ -317,6 +317,7 @@ async def _fallback_direct_mcp_fetch(tools_info, ai_agent):
                         tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
                 else:
                     for tool in tools:
+                        tool["enabled"] = False
                 tools_info["crm"] = {"available": True, "enabled": False, "tools": tools}
     except Exception as e:
         print(f"[MCP_TOOLS] CRM fallback failed: {e}")
