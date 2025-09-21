@@ -235,54 +235,46 @@ async def toggle_tool(tool_name: str):
 
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():
-    """MCP-Management から統一ツール一覧を取得"""
+    """新MCPToolManager から統一ツール一覧を取得"""
     global ai_agent
     
+    if not ai_agent or not hasattr(ai_agent, 'mcp_tool_manager'):
+        return {
+            "status": "error",
+            "tools": {"productmaster": {"available": False, "enabled": False, "tools": []}, 
+                     "crm": {"available": False, "enabled": False, "tools": []}},
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    # 新MCPToolManager からツール取得
+    all_tools = ai_agent.mcp_tool_manager.get_all_tools()
+    
+    # MCP Server別に分類
     tools_info = {"productmaster": {"available": False, "enabled": False, "tools": []}, 
                   "crm": {"available": False, "enabled": False, "tools": []}}
     
-    # MCP-Management から統一取得
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get("http://localhost:8008/api/tools")
-            if response.status_code == 200:
-                mcp_tools = response.json()
-                
-                # MCPサーバー別にツールを分類
-                for tool in mcp_tools:
-                    # remarks から MCP サーバーを判定
-                    if "Port 8003" in tool.get("remarks", ""):
-                        mcp_type = "productmaster"
-                    elif "Port 8004" in tool.get("remarks", ""):
-                        mcp_type = "crm"
-                    else:
-                        continue
-                    
-                    # MCP-Management データ構造を AIChat 形式に変換
-                    converted_tool = {
-                        "name": tool["tool_key"],           # ツールキー
-                        "description": tool["tool_name"],   # 短いツール名称
-                        "usage_context": tool["description"], # 詳細説明
-                        "mcp_server_name": tool.get("mcp_server_name", "Unknown MCP"), # MCP Server名
-                        "enabled": False
-                    }
-                    
-                    # ツール有効状態設定
-                    if ai_agent and hasattr(ai_agent, 'mcp_manager'):
-                        converted_tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["tool_key"])
-                    
-                    # 分類して追加
-                    if tools_info[mcp_type]["tools"] == []:
-                        tools_info[mcp_type] = {"available": True, "enabled": False, "tools": []}
-                    tools_info[mcp_type]["tools"].append(converted_tool)
-                        
-    except Exception as e:
-        print(f"[MCP_TOOLS] MCP-Management unavailable: {e}")
-        # ERROR表示: 個別MCPサーバー取得は行わない
-        tools_info = {
-            "productmaster": {"available": False, "enabled": False, "tools": []}, 
-            "crm": {"available": False, "enabled": False, "tools": []}
+    for tool_key, tool in all_tools.items():
+        # MCP Server判定
+        if tool.mcp_server_name == "ProductMaster MCP":
+            mcp_type = "productmaster"
+        elif tool.mcp_server_name == "CRM MCP":
+            mcp_type = "crm"
+        else:
+            continue
+        
+        # ツール情報変換
+        converted_tool = {
+            "name": tool.tool_key,
+            "description": tool.tool_name,
+            "usage_context": tool.description,
+            "mcp_server_name": tool.mcp_server_name,
+            "enabled": ai_agent.mcp_tool_manager.is_tool_enabled(tool_key)
         }
+        
+        # 分類して追加
+        if tools_info[mcp_type]["tools"] == []:
+            tools_info[mcp_type] = {"available": tool.available, "enabled": False, "tools": []}
+        tools_info[mcp_type]["tools"].append(converted_tool)
     
     return {
         "status": "success",
