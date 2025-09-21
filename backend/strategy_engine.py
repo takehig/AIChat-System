@@ -101,31 +101,18 @@ class StrategyEngine:
         logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
     
     def _generate_tools_description_from_manager(self) -> str:
-        """MCPToolManager から直接ツール情報生成（フィールド名明確化版）"""
-        descriptions = []
-        
-        # 有効なツールのみをフィールド名明確化で列挙
-        for tool_key, tool in self.mcp_tool_manager.registered_tools.items():
-            if self.mcp_tool_manager.is_tool_enabled(tool_key):
-                descriptions.append(f"- tool_key: {tool_key}, tool_name: {tool.tool_name}, description: {tool.description}, server: {tool.mcp_server_name}")
-        
-        if not descriptions:
+        """MCPToolManager から直接ツール情報生成（丁寧な結合版）"""
+        if not any(self.mcp_tool_manager.is_tool_enabled(tool_key) 
+                  for tool_key in self.mcp_tool_manager.registered_tools.keys()):
             return "現在利用可能なMCPツールはありません。"
         
-        tools_list = "\r\n".join(descriptions)
+        tools_info = []
+        for tool_key, tool in self.mcp_tool_manager.registered_tools.items():
+            if self.mcp_tool_manager.is_tool_enabled(tool_key):
+                tool_info = f"""ツール名: {tool.tool_name}
+ツールキー: {tool_key}
+説明: {tool.description}
+サーバー: {tool.mcp_server_name}"""
+                tools_info.append(tool_info)
         
-        return f"""利用可能なMCPツール:
-{tools_list}
-
-重要: 応答は以下のJSON形式でのみ行ってください。前置きテキストや説明は一切含めず、JSONのみを返してください。
-tool フィールドには tool_key の値を使用してください（例: "search_customers_by_bond_maturity"）。
-
-{{
-"steps": [
-    {{
-        "step": 1,
-        "tool": "tool_key_here",
-        "reason": "実行理由"
-    }}
-]
-}}"""
+        return "\r\n\r\n".join(tools_info)
