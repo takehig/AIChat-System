@@ -66,13 +66,15 @@ class StrategyEngine:
         strategy.strategy_llm_prompt = system_prompt
         strategy.strategy_llm_response = response
         
+        # Try外で初期化（エラー時情報保持）
+        detailed_steps = []
+        
         # JSON解析・ステップ抽出
         try:
             strategy_data = json.loads(response)
             steps = strategy_data.get("steps", [])
             
             # DetailedStep オブジェクト生成
-            detailed_steps = []
             for step_data in steps:
                 detailed_step = DetailedStep(
                     step=step_data.get("step", 0),
@@ -92,12 +94,11 @@ class StrategyEngine:
             logger.error(f"[DEBUG] JSON解析エラー: {e}")
             logger.error(f"[DEBUG] レスポンス内容: {response}")
             strategy.steps = []
+            strategy.parse_error = True
+            strategy.parse_error_message = str(e)
+            strategy.raw_response = response
             
-            logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"[DEBUG] JSON解析エラー: {e}")
-            logger.error(f"[DEBUG] 応答内容: {response}")
+        logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
             
             # 解析エラー時の戦略情報を既存オブジェクトに設定
             strategy.steps = []
