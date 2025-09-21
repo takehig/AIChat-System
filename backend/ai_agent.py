@@ -171,12 +171,14 @@ class AIAgent:
                 results.append({"tool": tool_name, "error": "Tool not available"})
                 continue
                 
-            if tool_name not in self.mcp_manager.available_tools:
+            if not self.mcp_tool_manager.is_tool_enabled(tool_name):
                 results.append({"tool": tool_name, "error": "Tool not enabled"})
                 continue
             
-            mcp_server_name = self.available_tools[tool_name]['mcp_server']
-            client = self.mcp_manager.clients[mcp_server_name]
+            # TODO: MCP実行機能は将来実装
+            # mcp_server_name = self.available_tools[tool_name]['mcp_server']
+            # client = self.mcp_tool_manager.get_client(mcp_server_name)
+            results.append({"tool": tool_name, "error": "MCP execution not implemented"})
             
             try:
                 if await client.health_check():
@@ -247,11 +249,13 @@ class AIAgent:
         if tool_name not in self.available_tools:
             return {"error": f"Tool '{tool_name}' not available"}
         
-        if tool_name not in self.mcp_manager.available_tools:
+        if not self.mcp_tool_manager.is_tool_enabled(tool_name):
             return {"error": f"Tool '{tool_name}' not enabled"}
         
-        mcp_server_name = self.available_tools[tool_name]['mcp_server']
-        client = self.mcp_manager.clients[mcp_server_name]
+        # TODO: MCP実行機能は将来実装
+        # mcp_server_name = self.available_tools[tool_name]['mcp_server']
+        # client = self.mcp_tool_manager.get_client(mcp_server_name)
+        return {"error": "MCP execution not implemented"}
         
         try:
             if await client.health_check():

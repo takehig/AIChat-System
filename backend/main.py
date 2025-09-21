@@ -287,47 +287,6 @@ async def get_mcp_tools():
         "tools": tools_info,
         "timestamp": datetime.now().isoformat()
     }
-
-async def _fallback_direct_mcp_fetch(tools_info, ai_agent):
-    """フォールバック: 個別MCPサーバーから直接取得"""
-    # ProductMaster MCP
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get("http://localhost:8003/tools/descriptions")
-            if response.status_code == 200:
-                productmaster_data = response.json()
-                tools = productmaster_data.get("tools", [])
-                if ai_agent and hasattr(ai_agent, 'mcp_manager'):
-                    for tool in tools:
-                        tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
-                        tool["mcp_server_name"] = "ProductMaster MCP"  # 追加
-                else:
-                    for tool in tools:
-                        tool["enabled"] = False
-                        tool["mcp_server_name"] = "ProductMaster MCP"  # 追加
-                tools_info["productmaster"] = {"available": True, "enabled": False, "tools": tools}
-    except Exception as e:
-        print(f"[MCP_TOOLS] ProductMaster fallback failed: {e}")
-    
-    # CRM MCP  
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get("http://localhost:8004/tools/descriptions")
-            if response.status_code == 200:
-                crm_data = response.json()
-                tools = crm_data.get("tools", [])
-                if ai_agent and hasattr(ai_agent, 'mcp_manager'):
-                    for tool in tools:
-                        tool["enabled"] = ai_agent.mcp_manager.is_tool_enabled(tool["name"])
-                        tool["mcp_server_name"] = "CRM MCP"  # 追加
-                else:
-                    for tool in tools:
-                        tool["enabled"] = False
-                        tool["mcp_server_name"] = "CRM MCP"  # 追加
-                        tool["enabled"] = False
-                tools_info["crm"] = {"available": True, "enabled": False, "tools": tools}
-    except Exception as e:
-        print(f"[MCP_TOOLS] CRM fallback failed: {e}")
     
     return {
         "status": "success",
