@@ -186,8 +186,18 @@ class AIAgent:
             step.output = tool_execution_result
             step.execution_time_ms = (time.time() - step_start_time) * 1000
             
+            print(f"[AI_AGENT] === STEP_EXECUTION_DEBUG SETTING ===")
+            print(f"[AI_AGENT] tool_execution_result keys: {list(tool_execution_result.keys()) if isinstance(tool_execution_result, dict) else 'Not dict'}")
+            print(f"[AI_AGENT] call_tool_info exists: {'call_tool_info' in tool_execution_result if isinstance(tool_execution_result, dict) else False}")
+            
             # MCP Client の構造化デバッグ情報を使用
             step.step_execution_debug = tool_execution_result.get("call_tool_info", {})
+            
+            print(f"[AI_AGENT] step.step_execution_debug keys: {list(step.step_execution_debug.keys()) if isinstance(step.step_execution_debug, dict) else 'Not dict'}")
+            print(f"[AI_AGENT] step.step_execution_debug.response exists: {'response' in step.step_execution_debug if isinstance(step.step_execution_debug, dict) else False}")
+            if isinstance(step.step_execution_debug, dict) and 'response' in step.step_execution_debug:
+                print(f"[AI_AGENT] step.step_execution_debug.response keys: {list(step.step_execution_debug['response'].keys())}")
+                print(f"[AI_AGENT] raw_mcp_tool_response exists: {'raw_mcp_tool_response' in step.step_execution_debug['response']}")
             
             # 次ステップ用（デバッグ情報除外）
             clean_result = {k: v for k, v in tool_execution_result.items() if k not in ["call_tool_info", "debug_response"]} if isinstance(tool_execution_result, dict) else tool_execution_result
