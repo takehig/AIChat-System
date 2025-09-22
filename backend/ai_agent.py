@@ -75,8 +75,8 @@ class AIAgent:
         try:
             await self.mcp_tool_manager.initialize()
             
-            enabled_count = len([k for k, v in self.mcp_tool_manager.registered_tools.items() 
-                               if self.mcp_tool_manager.is_tool_enabled(k)])
+            enabled_count = len([tool for tool in self.mcp_tool_manager.registered_tools.values() 
+                               if tool.enabled])  # MCPTool.enabled 直接参照
             
             if enabled_count > 0:
                 logger.info(f"MCP integration enabled ({enabled_count} tools available)")
@@ -85,12 +85,18 @@ class AIAgent:
     
     @property
     def enabled_tools(self):
-        """MCPToolManager の enabled_tools を参照"""
-        return self.mcp_tool_manager.enabled_tools
+        """MCPTool.enabled 直接参照による有効ツール取得"""
+        return {
+            tool_key: tool for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
+            if tool.enabled
+        }
     
     def get_enabled_tools(self):
-        """有効なツールのみ返す"""
-        return self.mcp_tool_manager.get_enabled_tools()
+        """有効なツールのみ返す - MCPTool.enabled 直接参照"""
+        return {
+            tool_key: tool for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
+            if tool.enabled
+        }
     
     def toggle_tool(self, tool_name: str) -> bool:
         """ツールの有効/無効を切り替え（MCPToolManagerに委譲）"""
