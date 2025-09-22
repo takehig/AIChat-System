@@ -34,6 +34,13 @@ class LLMUtil:
             Tuple[応答, プロンプト, 応答, 実行時間ms]
         """
         start_time = time.time()
+        
+        # 防御構文: どんな入力でも文字列に変換
+        if not isinstance(system_prompt, str):
+            system_prompt = str(system_prompt)
+        if not isinstance(user_message, str):
+            user_message = str(user_message)
+            
         full_prompt = f"System: {system_prompt}\\n\\nUser: {user_message}"
         
         try:
@@ -60,6 +67,12 @@ class LLMUtil:
             Claude応答文字列
         """
         try:
+            # 防御構文: どんな入力でも文字列に変換
+            if not isinstance(system_prompt, str):
+                system_prompt = str(system_prompt)
+            if not isinstance(user_message, str):
+                user_message = str(user_message)
+            
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": max_tokens,
