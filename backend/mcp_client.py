@@ -52,8 +52,8 @@ class MCPClient:
         
         print(f"[MCP_CLIENT] Server URL: {server_url}")
         
-        # デバッグ情報初期化
-        debug_info = {
+        # call_tool 実行情報初期化
+        call_tool_info = {
             "request": {
                 "tool_name": tool_name,
                 "arguments": arguments,
@@ -88,16 +88,16 @@ class MCPClient:
                 response = await client.post(server_url, json=payload)
                 processing_time = (time.time() - start_time) * 1000
                 
-                debug_info["response"]["processing_time_ms"] = processing_time
-                debug_info["response"]["request_id"] = request_id
-                debug_info["response"]["status"] = response.status_code
+                call_tool_info["response"]["processing_time_ms"] = processing_time
+                call_tool_info["response"]["request_id"] = request_id
+                call_tool_info["response"]["status"] = response.status_code
                 
                 if response.status_code == 200:
                     mcp_dict = response.json()
                     
-                    # デバッグ情報設定
-                    debug_info["response"]["tool_debug"] = mcp_dict.get("debug_response")
-                    print(f"[MCP_CLIENT] debug_response from server: {debug_info['response']['tool_debug']}")
+                    # call_tool 実行情報設定
+                    call_tool_info["response"]["tool_debug"] = mcp_dict.get("debug_response")
+                    print(f"[MCP_CLIENT] debug_response from server: {call_tool_info['response']['tool_debug']}")
                     
                     # 最終レスポンス作成
                     final_response = {
@@ -105,21 +105,21 @@ class MCPClient:
                         "id": mcp_dict.get("id"),
                         "result": mcp_dict.get("result"),
                         "error": mcp_dict.get("error"),
-                        "debug_info": debug_info  # 構造化デバッグ情報
+                        "debug_info": call_tool_info  # call_tool 実行情報
                     }
                     
                     print(f"[MCP_CLIENT] Final response: {final_response}")
                     print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
                     return final_response
                 else:
-                    debug_info["response"]["tool_debug"] = {"error": f"HTTP {response.status_code}", "response_text": response.text}
+                    call_tool_info["response"]["tool_debug"] = {"error": f"HTTP {response.status_code}", "response_text": response.text}
                     return {
                         "error": f"MCP server error: {response.status_code} - {response.text}",
-                        "debug_info": debug_info
+                        "debug_info": call_tool_info
                     }
                     
         except Exception as e:
-            debug_info["response"]["tool_debug"] = {"error": str(e), "error_type": type(e).__name__}
+            call_tool_info["response"]["tool_debug"] = {"error": str(e), "error_type": type(e).__name__}
             
             print(f"[MCP_CLIENT] === CALL_TOOL ERROR ===")
             print(f"[MCP_CLIENT] Exception occurred: {e}")
@@ -127,5 +127,5 @@ class MCPClient:
             
             return {
                 "error": f"MCP execution failed: {str(e)}",
-                "debug_info": debug_info
+                "debug_info": call_tool_info
             }
