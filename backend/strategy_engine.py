@@ -88,6 +88,7 @@ class StrategyEngine:
                 detailed_steps.append(detailed_step)
             
             strategy.steps = detailed_steps
+            strategy.raw_response = response  # 正常時も生レスポンス保存
             logger.info(f"[DEBUG] 戦略立案完了: {len(detailed_steps)}ステップ")
             
         except json.JSONDecodeError as e:
@@ -96,7 +97,7 @@ class StrategyEngine:
             strategy.steps = []
             strategy.parse_error = True
             strategy.parse_error_message = str(e)
-            strategy.raw_response = response
+            strategy.raw_response = response  # エラー時も生レスポンス保存
             
         logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
     

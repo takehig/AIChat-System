@@ -586,7 +586,18 @@
                             <details class="mt-2">
                                 <summary class="fw-bold">レスポンス詳細</summary>
                                 <pre class="bg-white p-2 small mt-1 border rounded">${strategy.strategy_llm_response || 'N/A'}</pre>
-                            </details>
+                            </details>`;
+                
+                // 生レスポンス表示（正常時・エラー時両方）
+                if (strategy.raw_response) {
+                    debugHtml += `
+                            <details class="mt-2">
+                                <summary class="fw-bold">生レスポンス詳細</summary>
+                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.raw_response}</pre>
+                            </details>`;
+                }
+                
+                debugHtml += `
                         </div>
                     </div>
                 `;
