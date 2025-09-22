@@ -38,7 +38,7 @@ class DetailedStep:
     input: Optional[str] = None
     output: Optional[Dict] = None
     execution_time_ms: Optional[float] = None
-    debug_info: Optional[Dict] = None
+    step_execution_debug: Optional[Dict] = None
     
     # LLM情報（統合）
     llm_prompt: Optional[str] = None

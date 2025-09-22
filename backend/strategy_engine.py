@@ -83,7 +83,7 @@ class StrategyEngine:
                     input="",
                     output="",
                     execution_time_ms=0,
-                    debug_info={}
+                    step_execution_debug={}
                 )
                 detailed_steps.append(detailed_step)
             
