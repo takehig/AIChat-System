@@ -94,10 +94,15 @@ class MCPClient:
                 
                 if response.status_code == 200:
                     mcp_dict = response.json()
+                    print(f"[MCP_CLIENT] === RESPONSE ANALYSIS ===")
+                    print(f"[MCP_CLIENT] Full mcp_dict keys: {list(mcp_dict.keys())}")
+                    print(f"[MCP_CLIENT] mcp_dict.get('debug_response'): {mcp_dict.get('debug_response')}")
+                    print(f"[MCP_CLIENT] debug_response type: {type(mcp_dict.get('debug_response'))}")
                     
                     # call_tool 実行情報設定
                     call_tool_info["response"]["raw_mcp_tool_response"] = mcp_dict.get("debug_response")
                     print(f"[MCP_CLIENT] debug_response from server: {call_tool_info['response']['raw_mcp_tool_response']}")
+                    print(f"[MCP_CLIENT] call_tool_info after setting: {call_tool_info}")
                     
                     # 最終レスポンス作成
                     final_response = {
@@ -108,6 +113,11 @@ class MCPClient:
                         "call_tool_info": call_tool_info  # フィールド名統一
                     }
                     
+                    print(f"[MCP_CLIENT] === FINAL RESPONSE ANALYSIS ===")
+                    print(f"[MCP_CLIENT] final_response keys: {list(final_response.keys())}")
+                    print(f"[MCP_CLIENT] final_response['call_tool_info'] keys: {list(final_response['call_tool_info'].keys())}")
+                    print(f"[MCP_CLIENT] final_response['call_tool_info']['response'] keys: {list(final_response['call_tool_info']['response'].keys())}")
+                    print(f"[MCP_CLIENT] raw_mcp_tool_response in final: {final_response['call_tool_info']['response'].get('raw_mcp_tool_response')}")
                     print(f"[MCP_CLIENT] Final response: {final_response}")
                     print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
                     return final_response
