@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MCPTool:
-    """MCP ツール情報"""
+    """MCP ツール情報 - 全フィールド辞書化対応"""
     tool_key: str
     tool_name: str
     description: str
@@ -15,14 +15,38 @@ class MCPTool:
     remarks: Optional[str] = None
     enabled: bool = True
     available: bool = False  # 実際にAPIが稼働しているか
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """MCPTool → 辞書変換"""
+        return {
+            "tool_key": self.tool_key,
+            "tool_name": self.tool_name,
+            "description": self.description,
+            "mcp_server_name": self.mcp_server_name,
+            "remarks": self.remarks,
+            "enabled": self.enabled,
+            "available": self.available
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'MCPTool':
+        """辞書 → MCPTool変換"""
+        return cls(
+            tool_key=data.get('tool_key', ''),
+            tool_name=data.get('tool_name', ''),
+            description=data.get('description', ''),
+            mcp_server_name=data.get('mcp_server_name', 'Unknown'),
+            remarks=data.get('remarks'),
+            enabled=data.get('enabled', True),
+            available=data.get('available', False)
+        )
 
 class MCPToolManager:
-    """AIChat MCP ツール管理クラス"""
+    """AIChat MCP ツール管理クラス - 一元管理・辞書統一"""
     
     def __init__(self, mcp_management_url: str = "http://localhost:8008"):
         self.mcp_management_url = mcp_management_url
-        self.registered_tools: Dict[str, MCPTool] = {}  # DB登録済みツール
-        self.enabled_tools: set = set()  # Enable状態のツール
+        self.registered_tools: Dict[str, MCPTool] = {}  # MCPTool インスタンス一元管理
         
     async def initialize(self):
         """初期化: 1.DB読み込み → 2.ステータスチェック → 3.Enable管理"""
@@ -50,15 +74,8 @@ class MCPToolManager:
                     mcp_tools = response.json()
                     
                     for tool_data in mcp_tools:
-                        tool = MCPTool(
-                            tool_key=tool_data.get('tool_key'),
-                            tool_name=tool_data.get('tool_name'),
-                            description=tool_data.get('description'),
-                            mcp_server_name=tool_data.get('mcp_server_name', 'Unknown'),
-                            remarks=tool_data.get('remarks'),
-                            enabled=True,  # デフォルト有効
-                            available=False  # ステータスチェック前は未確認
-                        )
+                        # 辞書データから MCPTool インスタンス生成
+                        tool = MCPTool.from_dict(tool_data)
                         self.registered_tools[tool.tool_key] = tool
                     
                     logger.info(f"DB から {len(self.registered_tools)} 個のツールを読み込み")
@@ -113,23 +130,21 @@ class MCPToolManager:
         }
     
     def is_tool_enabled(self, tool_key: str) -> bool:
-        """ツール有効状態確認"""
-        return tool_key in self.enabled_tools
+        """ツール有効状態確認 - MCPTool.enabled 参照"""
+        if tool_key not in self.registered_tools:
+            return False
+        return self.registered_tools[tool_key].enabled
     
     def toggle_tool_enabled(self, tool_key: str) -> bool:
-        """ツール有効/無効切り替え"""
+        """ツール有効/無効切り替え - MCPTool.enabled 統一管理"""
         if tool_key not in self.registered_tools:
             return False
         
-        if tool_key in self.enabled_tools:
-            self.enabled_tools.remove(tool_key)
-            enabled = False
-        else:
-            self.enabled_tools.add(tool_key)
-            enabled = True
+        tool = self.registered_tools[tool_key]
+        tool.enabled = not tool.enabled  # MCPTool.enabled で状態管理
         
-        logger.info(f"ツール {tool_key}: {'有効' if enabled else '無効'}")
-        return enabled
+        logger.info(f"ツール {tool_key}: {'有効' if tool.enabled else '無効'}")
+        return tool.enabled
     
     def get_tools_by_server(self, server_name: str) -> Dict[str, MCPTool]:
         """MCP Server別ツール取得"""
