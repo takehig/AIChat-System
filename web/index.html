@@ -592,27 +592,8 @@
                 `;
             }
 
-            // 回答統合LLM情報
-            if (strategy.final_response_llm_prompt) {
-                debugHtml += `
-                    <div class="mb-3">
-                        <h6 class="fw-bold text-success">📝 回答統合LLM</h6>
-                        <div class="bg-light p-2 rounded">
-                            <strong>実行時間:</strong> ${strategy.final_response_llm_execution_time_ms ? strategy.final_response_llm_execution_time_ms.toFixed(2) + 'ms' : 'N/A'}<br>
-                            <details class="mt-2">
-                                <summary class="fw-bold">プロンプト詳細</summary>
-                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.final_response_llm_prompt}</pre>
-                            </details>
-                            <details class="mt-2">
-                                <summary class="fw-bold">レスポンス詳細</summary>
-                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.final_response_llm_response || 'N/A'}</pre>
-                            </details>
-                        </div>
-                    </div>
-                `;
-            }
             
-            // 複数ツールの実行結果を表示
+            // Raw MCP Tool Response 情報を表示（新しい構造対応）
             if (response.execution_results && response.execution_results.length > 0) {
                 debugHtml += `
                     <div class="mb-3">
@@ -694,6 +675,26 @@
                 });
                 
                 debugHtml += `</div>`;
+            }
+
+            // 回答統合LLM情報（最後に表示）
+            if (strategy.final_response_llm_prompt) {
+                debugHtml += `
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-success">📝 回答統合LLM</h6>
+                        <div class="bg-light p-2 rounded">
+                            <strong>実行時間:</strong> ${strategy.final_response_llm_execution_time_ms ? strategy.final_response_llm_execution_time_ms.toFixed(2) + 'ms' : 'N/A'}<br>
+                            <details class="mt-2">
+                                <summary class="fw-bold">プロンプト詳細</summary>
+                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.final_response_llm_prompt}</pre>
+                            </details>
+                            <details class="mt-2">
+                                <summary class="fw-bold">レスポンス詳細</summary>
+                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.final_response_llm_response || 'N/A'}</pre>
+                            </details>
+                        </div>
+                    </div>
+                `;
             }
             
             debugPanel.innerHTML = debugHtml;
