@@ -891,9 +891,11 @@
                 if (data.strategy) {
                     console.log("[DEBUG] 新デバッグシステム検出:", data.strategy);
                     displayEnhancedDebugInfo(data.strategy);
+                    displayDebugInfo(data.strategy); // [FRONTEND DEBUG] ログ出力
                 } else {
                     console.log("[DEBUG] No strategy info available");
                     displayEnhancedDebugInfo(null);
+                    displayDebugInfo(null);
                 }
                 
                 // 送信中表示を削除
