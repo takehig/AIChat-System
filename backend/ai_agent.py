@@ -159,7 +159,7 @@ class AIAgent:
                 "suggestion": "システムプロンプトの改善が必要です"
             }
             error_step.execution_time_ms = 0
-            error_step.debug_info = {
+            error_step.step_execution_debug = {
                 "parse_error": True,
                 "error_message": strategy.parse_error_message,
                 "raw_response": strategy.raw_response
@@ -170,16 +170,28 @@ class AIAgent:
             step_start_time = time.time()
             
             # ツール直接実行
-            result = await self.execute_tool_directly(step.tool, current_input)
+            tool_execution_result = await self.execute_tool_directly(step.tool, current_input)
             
             # 同じオブジェクトに実行結果を追加
             step.input = current_input
-            step.output = result
+            step.output = tool_execution_result
             step.execution_time_ms = (time.time() - step_start_time) * 1000
-            step.debug_info = result.get("debug_info", {}) if isinstance(result, dict) else {}
             
-            # 次ステップ用（debug_info除外）
-            clean_result = {k: v for k, v in result.items() if k != "debug_info"} if isinstance(result, dict) else result
+            # デバッグ情報の役割明確化
+            # step_execution_debug: ステップ実行全体のデバッグ情報
+            # - request_info: ツール実行前の準備情報
+            # - tool_result: ツール側が実行した結果情報
+            step.step_execution_debug = {
+                "request_info": {
+                    "tool_name": step.tool,
+                    "input_text": current_input,
+                    "execution_start": step_start_time
+                },
+                "tool_result": tool_execution_result.get("debug_response", {}) if isinstance(tool_execution_result, dict) else {}
+            }
+            
+            # 次ステップ用（デバッグ情報除外）
+            clean_result = {k: v for k, v in tool_execution_result.items() if k not in ["debug_info", "debug_response"]} if isinstance(tool_execution_result, dict) else tool_execution_result
             current_input = json.dumps(clean_result, ensure_ascii=False)
             
             print(f"[AI_AGENT] Step {step.step} completed: {step.tool} ({step.execution_time_ms:.2f}ms)")

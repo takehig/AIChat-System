@@ -27,7 +27,7 @@ class DetailedStep:
     input: Optional[str] = None
     output: Optional[Dict] = None
     execution_time_ms: Optional[float] = None
-    debug_info: Optional[Dict] = None
+    step_execution_debug: Optional[Dict] = None  # ステップ実行全体のデバッグ情報
     
     # LLM情報（統合）
     llm_prompt: Optional[str] = None
@@ -102,7 +102,7 @@ class DetailedStrategy:
                     "input": getattr(step, 'input', None),
                     "output": getattr(step, 'output', None),
                     "execution_time_ms": getattr(step, 'execution_time_ms', None),
-                    "debug_info": getattr(step, 'debug_info', None),
+                    "step_execution_debug": getattr(step, 'step_execution_debug', None),
                     "llm_prompt": getattr(step, 'llm_prompt', None),
                     "llm_response": getattr(step, 'llm_response', None),
                     "llm_execution_time_ms": getattr(step, 'llm_execution_time_ms', None)
