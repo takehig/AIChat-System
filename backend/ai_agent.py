@@ -169,26 +169,29 @@ class AIAgent:
         for step in strategy.steps:
             step_start_time = time.time()
             
-            # ツール直接実行
-            tool_execution_result = await self.execute_tool_directly(step.tool, current_input)
+            # MCP Client 直接使用 - サーバーURL決定
+            tool = self.mcp_tool_manager.registered_tools[step.tool]
+            if tool.mcp_server_name == "CRM MCP":
+                mcp_url = "http://localhost:8004/mcp"
+            elif tool.mcp_server_name == "ProductMaster MCP":
+                mcp_url = "http://localhost:8003/mcp"
+            else:
+                step.output = {"error": f"Unknown MCP server: {tool.mcp_server_name}"}
+                step.execution_time_ms = (time.time() - step_start_time) * 1000
+                step.step_execution_debug = {"error": "Unknown MCP server"}
+                continue
+            
+            # MCP Client で直接ツール実行
+            client = MCPClient(mcp_url)
+            tool_execution_result = await client.call_tool(step.tool, {"text_input": current_input})
             
             # 同じオブジェクトに実行結果を追加
             step.input = current_input
             step.output = tool_execution_result
             step.execution_time_ms = (time.time() - step_start_time) * 1000
             
-            # デバッグ情報の役割明確化
-            # step_execution_debug: ステップ実行全体のデバッグ情報
-            # - request_info: ツール実行前の準備情報
-            # - tool_result: ツール側が実行した結果情報
-            step.step_execution_debug = {
-                "request_info": {
-                    "tool_name": step.tool,
-                    "input_text": current_input,
-                    "execution_start": step_start_time
-                },
-                "tool_result": tool_execution_result.get("debug_response", {}) if isinstance(tool_execution_result, dict) else {}
-            }
+            # MCP Client の構造化デバッグ情報を使用
+            step.step_execution_debug = tool_execution_result.get("debug_info", {})
             
             # 次ステップ用（デバッグ情報除外）
             clean_result = {k: v for k, v in tool_execution_result.items() if k not in ["debug_info", "debug_response"]} if isinstance(tool_execution_result, dict) else tool_execution_result
@@ -197,47 +200,3 @@ class AIAgent:
             print(f"[AI_AGENT] Step {step.step} completed: {step.tool} ({step.execution_time_ms:.2f}ms)")
         
         # 戻り値なし（参照渡し）
-    
-    async def execute_tool_directly(self, tool_name: str, tool_input: str) -> Dict[str, Any]:
-        """ツールを直接実行"""
-        if tool_name not in self.mcp_tool_manager.registered_tools:
-            return {"error": f"Tool '{tool_name}' not available"}
-        
-        if not self.mcp_tool_manager.is_tool_enabled(tool_name):
-            return {"error": f"Tool '{tool_name}' not enabled"}
-        
-        # MCPToolManager からツール情報取得
-        tool = self.mcp_tool_manager.registered_tools[tool_name]
-        
-        # MCP Server URL決定
-        if tool.mcp_server_name == "CRM MCP":
-            mcp_url = "http://localhost:8004/mcp"
-        elif tool.mcp_server_name == "ProductMaster MCP":
-            mcp_url = "http://localhost:8003/mcp"
-        else:
-            return {"error": f"Unknown MCP server: {tool.mcp_server_name}"}
-        
-        # MCPプロトコル準拠のペイロード (id フィールド追加)
-        import time
-        request_id = int(time.time() * 1000000)  # マイクロ秒精度で重複回避
-        
-        payload = {
-            "id": request_id,
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": {"text_input": tool_input}
-            }
-        }
-        
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(mcp_url, json=payload)
-                
-                if response.status_code == 200:
-                    return response.json()
-                else:
-                    return {"error": f"MCP server error: {response.status_code} - {response.text}"}
-                    
-        except Exception as e:
-            return {"error": f"MCP execution failed: {str(e)}"}

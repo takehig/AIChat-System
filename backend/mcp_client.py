@@ -23,9 +23,12 @@ class MCPClient:
         return current_id
     
     async def _send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        import time
+        request_id = int(time.time() * 1000000)  # マイクロ秒精度で重複回避
+        
         request = {
             "jsonrpc": "2.0",
-            "id": self._get_next_id(),
+            "id": request_id,
             "method": method,
             "params": params or {}
         }
