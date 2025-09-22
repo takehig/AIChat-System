@@ -199,10 +199,13 @@ class AIAgent:
                 print(f"[AI_AGENT] step.step_execution_debug.response keys: {list(step.step_execution_debug['response'].keys())}")
                 print(f"[AI_AGENT] raw_mcp_tool_response exists: {'raw_mcp_tool_response' in step.step_execution_debug['response']}")
             
-            # 次ステップ用（デバッグ情報除外）
-            clean_result = {k: v for k, v in tool_execution_result.items() if k not in ["call_tool_info", "debug_response"]} if isinstance(tool_execution_result, dict) else tool_execution_result
-            current_input = json.dumps(clean_result, ensure_ascii=False)
+            # 次ステップ用入力準備 - result フィールドのみを使用
+            if isinstance(tool_execution_result, dict) and "result" in tool_execution_result:
+                current_input = tool_execution_result["result"]
+            else:
+                current_input = str(tool_execution_result)
             
+            print(f"[AI_AGENT] Next step input: {current_input}")
             print(f"[AI_AGENT] Step {step.step} completed: {step.tool} ({step.execution_time_ms:.2f}ms)")
         
         # 戻り値なし（参照渡し）
