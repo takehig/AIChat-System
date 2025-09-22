@@ -1,5 +1,4 @@
 # AIChat System - 回答統合エンジン
-import json
 import time
 import logging
 from typing import Dict, Any, List
@@ -90,7 +89,7 @@ class IntegrationEngine:
                     logger.info(f"[DEBUG] Step {i} output keys: {list(step.output.keys()) if isinstance(step.output, dict) else 'not dict'}")
             
             results_summary = "\n\n".join([
-                f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {json.dumps(step.output, ensure_ascii=False, indent=2)}"
+                f"【Step {step.step}: {step.tool}】\n理由: {step.reason}\n結果: {step.output.get('result', str(step.output)) if isinstance(step.output, dict) else str(step.output)}"
                 for step in executed_strategy.steps if step.output
             ])
             logger.info(f"[DEBUG] 実行結果サマリー生成完了 - 長さ: {len(results_summary)}")
