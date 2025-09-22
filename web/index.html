@@ -612,19 +612,27 @@
                 debugHtml += `</div>`;
             }
             
-            // Tool Debug情報を表示（従来の形式も維持）
-            const toolDebug = response.tool_debug || {};
-            if (Object.keys(toolDebug).length > 0) {
+            // Raw MCP Tool Response 情報を表示（新しい構造対応）
+            const rawMcpToolResponses = {};
+            if (response.strategy && response.strategy.steps) {
+                response.strategy.steps.forEach(step => {
+                    if (step.output && step.output.call_tool_info && step.output.call_tool_info.response && step.output.call_tool_info.response.raw_mcp_tool_response) {
+                        rawMcpToolResponses[step.tool] = step.output.call_tool_info.response.raw_mcp_tool_response;
+                    }
+                });
+            }
+            
+            if (Object.keys(rawMcpToolResponses).length > 0) {
                 debugHtml += `
                     <div class="mb-3">
-                        <h6 class="fw-bold text-warning">🛠️ ツールデバッグ情報</h6>
+                        <h6 class="fw-bold text-warning">🛠️ MCP ツール生レスポンス情報</h6>
                 `;
                 
-                Object.entries(toolDebug).forEach(([toolName, debugData]) => {
+                Object.entries(rawMcpToolResponses).forEach(([toolName, rawResponse]) => {
                     debugHtml += `
                         <div class="border border-warning rounded p-2 mb-2">
                             <strong class="text-warning">${toolName}:</strong>
-                            <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(debugData, null, 2)}</pre>
+                            <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(rawResponse, null, 2)}</pre>
                         </div>
                     `;
                 });
