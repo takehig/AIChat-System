@@ -583,6 +583,10 @@
                                 <summary class="fw-bold">プロンプト詳細</summary>
                                 <pre class="bg-white p-2 small mt-1 border rounded">${strategy.strategy_llm_prompt}</pre>
                             </details>
+                            <details class="mt-2">
+                                <summary class="fw-bold">レスポンス詳細</summary>
+                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.strategy_llm_response || 'N/A'}</pre>
+                            </details>
                         </div>
                     </div>
                 `;
@@ -598,6 +602,10 @@
                             <details class="mt-2">
                                 <summary class="fw-bold">プロンプト詳細</summary>
                                 <pre class="bg-white p-2 small mt-1 border rounded">${strategy.final_response_llm_prompt}</pre>
+                            </details>
+                            <details class="mt-2">
+                                <summary class="fw-bold">レスポンス詳細</summary>
+                                <pre class="bg-white p-2 small mt-1 border rounded">${strategy.final_response_llm_response || 'N/A'}</pre>
                             </details>
                         </div>
                     </div>
