@@ -23,10 +23,10 @@ class StrategyEngine:
         self.optimization_rules = {}  # 最適化ルール
     
     def get_enabled_tools(self) -> Dict[str, Any]:
-        """有効化されたツールのみを取得（MCPTool クラス直接参照）"""
+        """有効化されたツールのみを取得（MCPTool.enabled 直接参照）"""
         return {
             tool_key: tool for tool_key, tool in self.mcp_tool_manager.registered_tools.items()
-            if self.mcp_tool_manager.is_tool_enabled(tool_key)
+            if tool.enabled  # MCPTool.enabled 直接参照
         }
     
     async def plan_strategy(self, user_message: str, strategy: DetailedStrategy) -> None:
@@ -34,8 +34,8 @@ class StrategyEngine:
         logger.info(f"[DEBUG] 戦略立案開始: {user_message}")
         
         # MCPToolManager から直接有効ツール数確認
-        enabled_count = len([k for k, v in self.mcp_tool_manager.registered_tools.items() 
-                           if self.mcp_tool_manager.is_tool_enabled(k)])
+        enabled_count = len([tool for tool in self.mcp_tool_manager.registered_tools.values() 
+                           if tool.enabled])  # MCPTool.enabled 直接参照
         logger.info(f"[DEBUG] MCPToolManager: {enabled_count}個のツール利用可能")
         
         # SystemPrompt Management から戦略立案プロンプトを取得
@@ -101,14 +101,13 @@ class StrategyEngine:
         logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
     
     def _generate_tools_description_from_manager(self) -> str:
-        """MCPToolManager から直接ツール情報生成（丁寧な結合版）"""
-        if not any(self.mcp_tool_manager.is_tool_enabled(tool_key) 
-                  for tool_key in self.mcp_tool_manager.registered_tools.keys()):
+        """MCPToolManager から直接ツール情報生成（MCPTool.enabled 統一版）"""
+        if not any(tool.enabled for tool in self.mcp_tool_manager.registered_tools.values()):
             return "現在利用可能なMCPツールはありません。"
         
         tools_info = []
         for tool_key, tool in self.mcp_tool_manager.registered_tools.items():
-            if self.mcp_tool_manager.is_tool_enabled(tool_key):
+            if tool.enabled:  # MCPTool.enabled 直接参照
                 tool_info = f"""ツール名: {tool.tool_name}
 ツールキー: {tool_key}
 説明: {tool.description}
