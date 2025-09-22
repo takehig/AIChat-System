@@ -14,5 +14,4 @@ function clearChat() {
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('messageInput').focus();
     initializeProductMasterMCP();
-    initializeCrmMCP();
 });
