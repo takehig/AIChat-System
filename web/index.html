@@ -669,7 +669,10 @@
                     debugHtml += `
                         <div class="border border-warning rounded p-2 mb-2">
                             <strong class="text-warning">${toolName}:</strong>
-                            <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(rawResponse, null, 2)}</pre>
+                            <details class="mt-2">
+                                <summary class="fw-bold">レスポンス詳細</summary>
+                                <pre class="bg-light p-2 small mt-1 border rounded">${JSON.stringify(rawResponse, null, 2)}</pre>
+                            </details>
                         </div>
                     `;
                 });
