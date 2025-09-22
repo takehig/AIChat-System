@@ -12,7 +12,7 @@ class MCPTool:
     tool_name: str
     description: str
     mcp_server_name: str
-    remarks: Optional[str] = None
+    system_prompt: Optional[str] = None
     enabled: bool = True
     available: bool = False  # 実際にAPIが稼働しているか
     
@@ -23,7 +23,7 @@ class MCPTool:
             "tool_name": self.tool_name,
             "description": self.description,
             "mcp_server_name": self.mcp_server_name,
-            "remarks": self.remarks,
+            "system_prompt": self.system_prompt,
             "enabled": self.enabled,
             "available": self.available
         }
@@ -36,7 +36,7 @@ class MCPTool:
             tool_name=data.get('tool_name', ''),
             description=data.get('description', ''),
             mcp_server_name=data.get('mcp_server_name', 'Unknown'),
-            remarks=data.get('remarks'),
+            system_prompt=data.get('system_prompt'),
             enabled=data.get('enabled', True),
             available=data.get('available', False)
         )

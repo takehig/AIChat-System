@@ -113,6 +113,11 @@ class StrategyEngine:
 ツールキー: {tool_key}
 説明: {tool.description}
 サーバー: {tool.mcp_server_name}"""
+                
+                # システムプロンプト追加
+                if tool.system_prompt:
+                    tool_info += f"\nシステム指示: {tool.system_prompt}"
+                
                 tools_info.append(tool_info)
         
         return "\r\n\r\n".join(tools_info)
