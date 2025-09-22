@@ -105,7 +105,7 @@ class MCPClient:
                         "id": mcp_dict.get("id"),
                         "result": mcp_dict.get("result"),
                         "error": mcp_dict.get("error"),
-                        "debug_info": call_tool_info  # call_tool 実行情報
+                        "call_tool_info": call_tool_info  # フィールド名統一
                     }
                     
                     print(f"[MCP_CLIENT] Final response: {final_response}")
@@ -115,7 +115,7 @@ class MCPClient:
                     call_tool_info["response"]["tool_debug"] = {"error": f"HTTP {response.status_code}", "response_text": response.text}
                     return {
                         "error": f"MCP server error: {response.status_code} - {response.text}",
-                        "debug_info": call_tool_info
+                        "call_tool_info": call_tool_info
                     }
                     
         except Exception as e:
@@ -127,5 +127,5 @@ class MCPClient:
             
             return {
                 "error": f"MCP execution failed: {str(e)}",
-                "debug_info": call_tool_info
+                "call_tool_info": call_tool_info
             }

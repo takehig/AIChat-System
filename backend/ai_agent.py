@@ -187,10 +187,10 @@ class AIAgent:
             step.execution_time_ms = (time.time() - step_start_time) * 1000
             
             # MCP Client の構造化デバッグ情報を使用
-            step.step_execution_debug = tool_execution_result.get("debug_info", {})
+            step.step_execution_debug = tool_execution_result.get("call_tool_info", {})
             
             # 次ステップ用（デバッグ情報除外）
-            clean_result = {k: v for k, v in tool_execution_result.items() if k not in ["debug_info", "debug_response"]} if isinstance(tool_execution_result, dict) else tool_execution_result
+            clean_result = {k: v for k, v in tool_execution_result.items() if k not in ["call_tool_info", "debug_response"]} if isinstance(tool_execution_result, dict) else tool_execution_result
             current_input = json.dumps(clean_result, ensure_ascii=False)
             
             print(f"[AI_AGENT] Step {step.step} completed: {step.tool} ({step.execution_time_ms:.2f}ms)")
