@@ -64,7 +64,7 @@ class MCPClient:
                 "processing_time_ms": None,
                 "request_id": None,
                 "status": None,
-                "tool_debug": None
+                "raw_mcp_tool_response": None
             }
         }
         
@@ -96,8 +96,8 @@ class MCPClient:
                     mcp_dict = response.json()
                     
                     # call_tool 実行情報設定
-                    call_tool_info["response"]["tool_debug"] = mcp_dict.get("debug_response")
-                    print(f"[MCP_CLIENT] debug_response from server: {call_tool_info['response']['tool_debug']}")
+                    call_tool_info["response"]["raw_mcp_tool_response"] = mcp_dict.get("debug_response")
+                    print(f"[MCP_CLIENT] debug_response from server: {call_tool_info['response']['raw_mcp_tool_response']}")
                     
                     # 最終レスポンス作成
                     final_response = {
@@ -112,14 +112,14 @@ class MCPClient:
                     print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
                     return final_response
                 else:
-                    call_tool_info["response"]["tool_debug"] = {"error": f"HTTP {response.status_code}", "response_text": response.text}
+                    call_tool_info["response"]["raw_mcp_tool_response"] = {"error": f"HTTP {response.status_code}", "response_text": response.text}
                     return {
                         "error": f"MCP server error: {response.status_code} - {response.text}",
                         "call_tool_info": call_tool_info
                     }
                     
         except Exception as e:
-            call_tool_info["response"]["tool_debug"] = {"error": str(e), "error_type": type(e).__name__}
+            call_tool_info["response"]["raw_mcp_tool_response"] = {"error": str(e), "error_type": type(e).__name__}
             
             print(f"[MCP_CLIENT] === CALL_TOOL ERROR ===")
             print(f"[MCP_CLIENT] Exception occurred: {e}")
