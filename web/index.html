@@ -613,13 +613,37 @@
             
             // Raw MCP Tool Response 情報を表示（新しい構造対応）
             const rawMcpToolResponses = {};
+            console.log("[FRONTEND DEBUG] === RAW MCP TOOL RESPONSES DEBUG ===");
+            console.log("[FRONTEND DEBUG] response.strategy exists:", !!response.strategy);
+            console.log("[FRONTEND DEBUG] response.strategy.steps exists:", !!(response.strategy && response.strategy.steps));
+            console.log("[FRONTEND DEBUG] response.strategy.steps length:", response.strategy && response.strategy.steps ? response.strategy.steps.length : 0);
+            
             if (response.strategy && response.strategy.steps) {
-                response.strategy.steps.forEach(step => {
-                    if (step.output && step.output.call_tool_info && step.output.call_tool_info.response && step.output.call_tool_info.response.raw_mcp_tool_response) {
+                response.strategy.steps.forEach((step, index) => {
+                    console.log(`[FRONTEND DEBUG] === STEP ${index} DEBUG ===`);
+                    console.log(`[FRONTEND DEBUG] step.tool: ${step.tool}`);
+                    console.log(`[FRONTEND DEBUG] step.output exists:`, !!step.output);
+                    console.log(`[FRONTEND DEBUG] step.step_execution_debug exists:`, !!step.step_execution_debug);
+                    
+                    // step_execution_debug からのアクセス
+                    if (step.step_execution_debug && step.step_execution_debug.response && step.step_execution_debug.response.raw_mcp_tool_response) {
+                        console.log(`[FRONTEND DEBUG] Found raw_mcp_tool_response in step_execution_debug`);
+                        rawMcpToolResponses[step.tool] = step.step_execution_debug.response.raw_mcp_tool_response;
+                    }
+                    // step.output からのアクセス（従来）
+                    else if (step.output && step.output.call_tool_info && step.output.call_tool_info.response && step.output.call_tool_info.response.raw_mcp_tool_response) {
+                        console.log(`[FRONTEND DEBUG] Found raw_mcp_tool_response in step.output`);
                         rawMcpToolResponses[step.tool] = step.output.call_tool_info.response.raw_mcp_tool_response;
+                    } else {
+                        console.log(`[FRONTEND DEBUG] raw_mcp_tool_response NOT FOUND for ${step.tool}`);
+                        console.log(`[FRONTEND DEBUG] step.step_execution_debug:`, step.step_execution_debug);
+                        console.log(`[FRONTEND DEBUG] step.output:`, step.output);
                     }
                 });
             }
+            
+            console.log("[FRONTEND DEBUG] rawMcpToolResponses keys:", Object.keys(rawMcpToolResponses));
+            console.log("[FRONTEND DEBUG] rawMcpToolResponses:", rawMcpToolResponses);
             
             if (Object.keys(rawMcpToolResponses).length > 0) {
                 debugHtml += `
