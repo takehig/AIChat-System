@@ -926,11 +926,11 @@
                 
                 // 統合デバッグ情報を画面に表示
                 if (data.strategy) {
-                    console.log("[DEBUG] 新デバッグシステム検出:", data.strategy);
+                    console.log("[DEBUG] 戦略実行結果検出:", data.strategy);
                     displayEnhancedDebugInfo(data.strategy);
                     displayDebugInfo(data); // [FRONTEND DEBUG] ログ出力 - data 全体を渡す
                 } else {
-                    console.log("[DEBUG] No strategy info available");
+                    console.log("[DEBUG] 戦略情報なし - ツール未実行");
                     displayEnhancedDebugInfo(null);
                     displayDebugInfo(data); // data 全体を渡す
                 }
