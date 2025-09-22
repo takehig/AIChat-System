@@ -55,6 +55,9 @@ class AIAgent:
         from mcp_tool_manager import MCPToolManager
         self.mcp_tool_manager = MCPToolManager()
         
+        # MCP Client 初期化 - MCPToolManager 注入
+        self.mcp_client = MCPClient(self.mcp_tool_manager)
+        
         # LLMユーティリティ初期化
         self.llm_util = LLMUtil(self.bedrock_client, self.model_id)
         
@@ -169,21 +172,8 @@ class AIAgent:
         for step in strategy.steps:
             step_start_time = time.time()
             
-            # MCP Client 直接使用 - サーバーURL決定
-            tool = self.mcp_tool_manager.registered_tools[step.tool]
-            if tool.mcp_server_name == "CRM MCP":
-                mcp_url = "http://localhost:8004/mcp"
-            elif tool.mcp_server_name == "ProductMaster MCP":
-                mcp_url = "http://localhost:8003/mcp"
-            else:
-                step.output = {"error": f"Unknown MCP server: {tool.mcp_server_name}"}
-                step.execution_time_ms = (time.time() - step_start_time) * 1000
-                step.step_execution_debug = {"error": "Unknown MCP server"}
-                continue
-            
-            # MCP Client で直接ツール実行
-            client = MCPClient(mcp_url)
-            tool_execution_result = await client.call_tool(step.tool, {"text_input": current_input})
+            # MCP Client でツール実行 - ツール名のみ渡し
+            tool_execution_result = await self.mcp_client.call_tool(step.tool, {"text_input": current_input})
             
             # 同じオブジェクトに実行結果を追加
             step.input = current_input

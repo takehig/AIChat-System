@@ -1,120 +1,63 @@
-import asyncio
-import json
+from mcp_tool_manager import MCPToolManager
 import httpx
-from httpx import TimeoutException
-from typing import Dict, Any, List, Optional
 import logging
-from config import TIMEOUT_CONFIG
+import time
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
+# タイムアウト設定
+TIMEOUT_CONFIG = {
+    "mcp_request_timeout": 30.0
+}
+
+class TimeoutException(Exception):
+    pass
+
 class MCPClient:
-    def __init__(self, server_url: str = "http://localhost:8003"):
-        self.server_url = server_url
-        self.mcp_endpoint = f"{server_url}/mcp"
-        self.health_endpoint = f"{server_url}/health"
+    """MCP Client - MCPToolManager 統合・ツール名のみ受け取り設計"""
+    
+    def __init__(self, tool_manager: MCPToolManager):
+        self.tool_manager = tool_manager  # MCPToolManager 注入
         self.request_id = 1
-        self.initialized = False
-        self.available_tools = []
-    
-    def _get_next_id(self) -> int:
-        current_id = self.request_id
-        self.request_id += 1
-        return current_id
-    
-    async def _send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        import time
-        request_id = int(time.time() * 1000000)  # マイクロ秒精度で重複回避
-        
-        request = {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "method": method,
-            "params": params or {}
-        }
-        
-        # グローバルタイムアウト設定使用
-        timeout = TIMEOUT_CONFIG["mcp_request_timeout"]
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            try:
-                response = await client.post(self.mcp_endpoint, json=request)
-                response.raise_for_status()
-                return response.json()
-            except TimeoutException:
-                logger.error(f"MCP request failed: timeout ({timeout}s)")
-                return {"error": f"MCP server timeout ({timeout}s)"}
-            except Exception as e:
-                logger.error(f"MCP request failed: {e}")
-                return {"error": str(e)}
-    
-    async def health_check(self) -> bool:
-        try:
-            # ヘルスチェックは短いタイムアウト
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(self.health_endpoint)
-                return response.status_code == 200
-        except:
-            return False
-    
-    async def initialize(self) -> bool:
-        try:
-            params = {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "aichat-mcp-client", "version": "1.0.0"}
-            }
-            result = await self._send_request("initialize", params)
-            
-            if "result" in result:
-                self.initialized = True
-                logger.info("MCP initialized successfully")
-                return True
-            return False
-        except Exception as e:
-            logger.error(f"MCP initialize failed: {e}")
-            return False
-    
-    async def get_tool_descriptions(self) -> Dict[str, Any]:
-        """ツール情報を取得（usage_context付き）"""
-        try:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.server_url}/tools/descriptions")
-                if response.status_code == 200:
-                    return response.json()
-                else:
-                    logger.warning(f"Tool descriptions request failed: {response.status_code}")
-                    return {}
-        except Exception as e:
-            logger.error(f"Failed to get tool descriptions: {e}")
-            return {}
-    
-    async def list_tools(self) -> List[Dict[str, Any]]:
-        try:
-            result = await self._send_request("tools/list")
-            if "result" in result and "tools" in result["result"]:
-                self.available_tools = result["result"]["tools"]
-                return self.available_tools
-            return []
-        except Exception as e:
-            print(f"[MCP_CLIENT] Tools list failed: {e}")
-            return []
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        import time
+        """ツール実行 - ツール名のみ受け取り・内部で完全管理"""
         start_time = time.time()
         
         print(f"[MCP_CLIENT] === CALL_TOOL START ===")
         print(f"[MCP_CLIENT] Tool: {tool_name}")
         print(f"[MCP_CLIENT] Arguments: {arguments}")
-        print(f"[MCP_CLIENT] Server URL: {self.server_url}")
         
-        # Try外で初期化（エラー時情報保持）
+        # ツール情報取得
+        if tool_name not in self.tool_manager.registered_tools:
+            return {"error": f"Tool '{tool_name}' not found"}
+        
+        tool = self.tool_manager.registered_tools[tool_name]
+        
+        # 状態確認
+        if not tool.enabled:
+            return {"error": f"Tool '{tool_name}' is disabled"}
+        
+        if not tool.available:
+            return {"error": f"Tool '{tool_name}' is not available"}
+        
+        # ルーティング決定
+        if tool.mcp_server_name == "CRM MCP":
+            server_url = "http://localhost:8004/mcp"
+        elif tool.mcp_server_name == "ProductMaster MCP":
+            server_url = "http://localhost:8003/mcp"
+        else:
+            return {"error": f"Unknown MCP server: {tool.mcp_server_name}"}
+        
+        print(f"[MCP_CLIENT] Server URL: {server_url}")
+        
+        # デバッグ情報初期化
         debug_info = {
             "request": {
                 "tool_name": tool_name,
                 "arguments": arguments,
-                "server_url": self.server_url,
+                "server_url": server_url,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
             },
             "response": {
@@ -126,58 +69,63 @@ class MCPClient:
         }
         
         try:
-            params = {"name": tool_name, "arguments": arguments}
-            print(f"[MCP_CLIENT] About to send request with params: {params}")
-            
-            mcp_dict = await self._send_request("tools/call", params)
-            
-            print(f"[MCP_CLIENT] Request completed successfully")
-            processing_time = round((time.time() - start_time) * 1000, 2)
-            debug_info["response"]["processing_time_ms"] = processing_time
-            debug_info["response"]["request_id"] = mcp_dict.get("id")
-            
-            print(f"[MCP_CLIENT] MCP server response: {mcp_dict}")
-            
-            if "result" in mcp_dict:
-                debug_info["response"]["status"] = "success"
-                debug_info["response"]["tool_debug"] = mcp_dict.get("debug_response")
-                
-                print(f"[MCP_CLIENT] debug_response from server: {debug_info['response']['tool_debug']}")
-                print(f"[MCP_CLIENT] Generated debug_info: {debug_info}")
-                
-                response = {
-                    "result": mcp_dict["result"],
-                    "debug_info": debug_info
+            # JSON-RPC リクエスト作成
+            request_id = int(time.time() * 1000000)  # マイクロ秒精度
+            payload = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments
                 }
-                print(f"[MCP_CLIENT] Final response: {response}")
-                print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
-                return response
-            else:
-                debug_info["response"]["status"] = "error"
-                debug_info["response"]["tool_debug"] = mcp_dict  # 統一スキーマ
+            }
+            
+            print(f"[MCP_CLIENT] Request payload: {payload}")
+            
+            # HTTP通信実行
+            async with httpx.AsyncClient(timeout=TIMEOUT_CONFIG["mcp_request_timeout"]) as client:
+                response = await client.post(server_url, json=payload)
+                processing_time = (time.time() - start_time) * 1000
                 
-                print(f"[MCP_CLIENT] === NO RESULT ERROR ===")
-                print(f"[MCP_CLIENT] MCP response keys: {list(mcp_dict.keys())}")
-                print(f"[MCP_CLIENT] Full MCP response: {mcp_dict}")
-                print(f"[MCP_CLIENT] Looking for 'result' key but not found")
+                debug_info["response"]["processing_time_ms"] = processing_time
+                debug_info["response"]["request_id"] = request_id
+                debug_info["response"]["status"] = response.status_code
                 
-                return {
-                    "error": "Tool execution failed",
-                    "debug_info": debug_info
-                }
+                if response.status_code == 200:
+                    mcp_dict = response.json()
+                    
+                    # デバッグ情報設定
+                    debug_info["response"]["tool_debug"] = mcp_dict.get("debug_response")
+                    print(f"[MCP_CLIENT] debug_response from server: {debug_info['response']['tool_debug']}")
+                    
+                    # 最終レスポンス作成
+                    final_response = {
+                        "jsonrpc": mcp_dict.get("jsonrpc"),
+                        "id": mcp_dict.get("id"),
+                        "result": mcp_dict.get("result"),
+                        "error": mcp_dict.get("error"),
+                        "debug_info": debug_info  # 構造化デバッグ情報
+                    }
+                    
+                    print(f"[MCP_CLIENT] Final response: {final_response}")
+                    print(f"[MCP_CLIENT] === CALL_TOOL SUCCESS ===")
+                    return final_response
+                else:
+                    debug_info["response"]["tool_debug"] = {"error": f"HTTP {response.status_code}", "response_text": response.text}
+                    return {
+                        "error": f"MCP server error: {response.status_code} - {response.text}",
+                        "debug_info": debug_info
+                    }
+                    
         except Exception as e:
-            processing_time = round((time.time() - start_time) * 1000, 2)
-            debug_info["response"]["processing_time_ms"] = processing_time
-            debug_info["response"]["status"] = "exception"
             debug_info["response"]["tool_debug"] = {"error": str(e), "error_type": type(e).__name__}
             
             print(f"[MCP_CLIENT] === CALL_TOOL ERROR ===")
             print(f"[MCP_CLIENT] Exception occurred: {e}")
             print(f"[MCP_CLIENT] Exception type: {type(e)}")
-            import traceback
-            print(f"[MCP_CLIENT] Traceback: {traceback.format_exc()}")
             
             return {
-                "error": f"MCP request failed: {str(e)}",
+                "error": f"MCP execution failed: {str(e)}",
                 "debug_info": debug_info
             }
