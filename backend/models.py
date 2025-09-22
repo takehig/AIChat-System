@@ -93,22 +93,35 @@ class DetailedStrategy:
         if self.strategy_llm_prompt:
             logger.info(f"[DEBUG] to_dict - strategy_llm_prompt長: {len(self.strategy_llm_prompt)}")
         
+        # steps を辞書形式に変換（デバッグログ付き）
+        steps_dict = []
+        for step in self.steps:
+            print(f"[MODELS] === STEP TO_DICT DEBUG ===")
+            print(f"[MODELS] step.tool: {step.tool}")
+            print(f"[MODELS] step_execution_debug exists: {hasattr(step, 'step_execution_debug')}")
+            print(f"[MODELS] step_execution_debug value type: {type(getattr(step, 'step_execution_debug', None))}")
+            if hasattr(step, 'step_execution_debug') and isinstance(step.step_execution_debug, dict):
+                print(f"[MODELS] step_execution_debug keys: {list(step.step_execution_debug.keys())}")
+                if 'response' in step.step_execution_debug:
+                    print(f"[MODELS] response keys: {list(step.step_execution_debug['response'].keys())}")
+                    print(f"[MODELS] raw_mcp_tool_response exists: {'raw_mcp_tool_response' in step.step_execution_debug['response']}")
+            
+            step_dict = {
+                "step": step.step,
+                "tool": step.tool,
+                "reason": step.reason,
+                "input": getattr(step, 'input', None),
+                "output": getattr(step, 'output', None),
+                "execution_time_ms": getattr(step, 'execution_time_ms', None),
+                "step_execution_debug": getattr(step, 'step_execution_debug', None),
+                "llm_prompt": getattr(step, 'llm_prompt', None),
+                "llm_response": getattr(step, 'llm_response', None),
+                "llm_execution_time_ms": getattr(step, 'llm_execution_time_ms', None)
+            }
+            steps_dict.append(step_dict)
+        
         result = {
-            "steps": [
-                {
-                    "step": step.step,
-                    "tool": step.tool,
-                    "reason": step.reason,
-                    "input": getattr(step, 'input', None),
-                    "output": getattr(step, 'output', None),
-                    "execution_time_ms": getattr(step, 'execution_time_ms', None),
-                    "step_execution_debug": getattr(step, 'step_execution_debug', None),
-                    "llm_prompt": getattr(step, 'llm_prompt', None),
-                    "llm_response": getattr(step, 'llm_response', None),
-                    "llm_execution_time_ms": getattr(step, 'llm_execution_time_ms', None)
-                }
-                for step in self.steps
-            ],
+            "steps": steps_dict,
             "strategy_llm_prompt": self.strategy_llm_prompt,
             "strategy_llm_response": self.strategy_llm_response,
             "strategy_llm_execution_time_ms": self.strategy_llm_execution_time_ms,
