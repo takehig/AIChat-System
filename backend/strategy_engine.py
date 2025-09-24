@@ -63,7 +63,9 @@ class StrategyEngine:
         logger.info(f"[DEBUG] LLM呼び出し完了 - 応答長: {len(response)}, 実行時間: {execution_time}ms")
         
         # 戦略情報を既存オブジェクトに追加（参照渡し）
-        strategy.strategy_llm_prompt = system_prompt
+        # call_claude の実際の呼び出し内容を完全連結してデバッグ保存
+        full_prompt_for_debug = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER INPUT ===\n{user_input}"
+        strategy.strategy_llm_prompt = full_prompt_for_debug
         strategy.strategy_llm_response = response
         strategy.raw_response = response  # 元レスポンス常に保存
         
