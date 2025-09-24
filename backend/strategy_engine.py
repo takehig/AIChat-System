@@ -132,9 +132,8 @@ class StrategyEngine:
     async def _fix_parse_error_with_llm(self, original_response: str, error_message: str) -> str:
         """パースエラーをLLMで修正"""
         try:
-            # SystemPrompt Management からプロンプト取得
-            from utils.system_prompt import get_system_prompt
-            system_prompt_data = await get_system_prompt("strategy_planning_parse_error_fix")
+            # SystemPrompt Management からプロンプト取得（既存実装に合わせる）
+            system_prompt_data = await get_system_prompt_by_key("strategy_planning_parse_error_fix")
             system_prompt = system_prompt_data.get("prompt_text", "")
             
             if not system_prompt:
