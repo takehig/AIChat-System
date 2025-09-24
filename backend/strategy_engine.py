@@ -65,6 +65,7 @@ class StrategyEngine:
         # 戦略情報を既存オブジェクトに追加（参照渡し）
         strategy.strategy_llm_prompt = system_prompt
         strategy.strategy_llm_response = response
+        strategy.raw_response = response  # 元レスポンス常に保存
         
         # Try外で初期化（エラー時情報保持）
         detailed_steps = []
@@ -88,18 +89,76 @@ class StrategyEngine:
                 detailed_steps.append(detailed_step)
             
             strategy.steps = detailed_steps
-            strategy.raw_response = response  # 正常時も生レスポンス保存
             logger.info(f"[DEBUG] 戦略立案完了: {len(detailed_steps)}ステップ")
             
         except json.JSONDecodeError as e:
             logger.error(f"[DEBUG] JSON解析エラー: {e}")
             logger.error(f"[DEBUG] レスポンス内容: {response}")
-            strategy.steps = []
-            strategy.parse_error = True
-            strategy.parse_error_message = str(e)
-            strategy.raw_response = response  # エラー時も生レスポンス保存
+            
+            # パースエラー修正を試行
+            logger.info("[DEBUG] パースエラー修正を開始")
+            fixed_response = await self._fix_parse_error_with_llm(response, str(e))
+            
+            # 修正後レスポンスで再パース試行
+            try:
+                strategy_data = json.loads(fixed_response)
+                steps = strategy_data.get("steps", [])
+                
+                # DetailedStep オブジェクト生成
+                for step_data in steps:
+                    detailed_step = DetailedStep(
+                        step=step_data.get("step", 0),
+                        tool=step_data.get("tool", ""),
+                        reason=step_data.get("reason", ""),
+                        input="",
+                        output="",
+                        execution_time_ms=0,
+                        step_execution_debug={}
+                    )
+                    detailed_steps.append(detailed_step)
+                
+                strategy.steps = detailed_steps
+                strategy.strategy_llm_response = fixed_response  # 修正後レスポンス保存
+                logger.info(f"[DEBUG] パースエラー修正成功: {len(detailed_steps)}ステップ")
+                
+            except json.JSONDecodeError as e2:
+                logger.error(f"[DEBUG] 修正後も解析失敗: {e2}")
+                strategy.steps = []
+                strategy.parse_error = True
+                strategy.parse_error_message = f"修正後も解析失敗: {str(e2)}"
             
         logger.info(f"[DEBUG] DetailedStrategy更新完了 - steps数: {len(detailed_steps)}")
+    
+    async def _fix_parse_error_with_llm(self, original_response: str, error_message: str) -> str:
+        """パースエラーをLLMで修正"""
+        try:
+            # SystemPrompt Management からプロンプト取得
+            from utils.system_prompt import get_system_prompt
+            system_prompt_data = await get_system_prompt("strategy_planning_parse_error_fix")
+            system_prompt = system_prompt_data.get("prompt_text", "")
+            
+            if not system_prompt:
+                logger.error("[DEBUG] パースエラー修正用プロンプトが取得できませんでした")
+                return original_response
+            
+            user_message = f"""エラー内容: {error_message}
+
+元のレスポンス:
+{original_response}"""
+
+            fixed_response = await self.llm_util.call_claude(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                max_tokens=2000,
+                temperature=0.1
+            )
+            
+            logger.info(f"[DEBUG] パースエラー修正完了 - 元長: {len(original_response)}, 修正後長: {len(fixed_response)}")
+            return fixed_response.strip()
+            
+        except Exception as e:
+            logger.error(f"[DEBUG] パースエラー修正失敗: {e}")
+            return original_response  # 修正失敗時は元レスポンス返却
     
     def _generate_tools_description_from_manager(self) -> str:
         """MCPToolManager から直接ツール情報生成（MCPTool.enabled 統一版）"""
